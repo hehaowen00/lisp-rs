@@ -1,6 +1,7 @@
 # lisp.rs
 
-A lisp interpreter implemented in Rust. A REPL (read-evaluate-print loop) is also implemented.
+A lisp interpreter implemented in Rust with basic lookup tail call optimization.
+A REPL (read-evaluate-print loop) is also implemented.
 
 Supports boolean, numeric, string and symbol types.
 
