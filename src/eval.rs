@@ -3,7 +3,7 @@ use crate::parser::*;
 use rustyline::Editor;
 
 pub struct LispEnv {
-    pub ctx: LispContext<LispToken>,
+    pub ctx: LispContext<LispToken>
 }
 
 impl LispEnv {
