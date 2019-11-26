@@ -1,6 +1,6 @@
-use crate::tokens::*;
-use crate::parser::*;
-use rustyline::Editor;
+use crate::tokens::{LispContext, LispError, LispToken};
+use crate::parser::{parse};
+use rustyline::{Editor};
 
 pub struct LispEnv {
     pub ctx: LispContext<LispToken>

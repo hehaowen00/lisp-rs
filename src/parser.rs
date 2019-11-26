@@ -1,4 +1,4 @@
-use crate::tokens::*;
+use crate::tokens::{LispError, LispToken};
 
 pub fn parse(expr: &Vec<char>) -> Result<LispToken, LispError> {
     let mut idx = 0;

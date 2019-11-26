@@ -31,7 +31,7 @@ pub enum LispError {
     InvalidNoArguments,
     Quit,
     Other(String),
-    UnexpectedChar(char, usize),
+    UnexpectedChar(char, usize)
 }
 
 impl fmt::Display for LispError {
