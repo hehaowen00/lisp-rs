@@ -45,7 +45,7 @@ impl LispEnv {
                     }
 
                     editor.add_history_entry(line.trim_end());
-                    println!("{}", err);
+                    println!("{}\n", err);
                 }
             }
         }
@@ -608,15 +608,20 @@ fn apply(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
     if args.len() != 2 {
         return Err(LispError::InvalidNoArguments);
     } else {
-        let lambda = match args[0] {
-            LispToken::List(_) => args[0].clone(),
+        let symbol = match args[0] {
+            LispToken::List(_) => Some(args[0].clone()),
             _ => match ctx.get(format!("{}", args[0])) {
-                None => LispToken::List(vec![]),
-                Some(f) => f.clone()
+                Some(f) => Some(f.clone()),
+                None => None
             }
         };
 
-        if let LispToken::List(f) = lambda {
+        let arguments = match &args[1] {
+            LispToken::List(xs) => xs.to_vec(),
+            x => vec![x.clone()]
+        };
+
+        if let Some(LispToken::List(f)) = symbol {
             if f.len() != 3 {
                 return Err(LispError::InvalidNoArguments);
             }
@@ -639,19 +644,14 @@ fn apply(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
                 return Ok(LispToken::Sym("nil".to_string()));
             }
 
-            let input = match &args[1] {
-                LispToken::List(xs) => xs.to_vec(),
-                x => vec![x.clone()]
-            };
-
-            if input.len() != params.len() {
+            if arguments.len() != params.len() {
                 return Err(LispError::InvalidNoArguments);
             }
 
             let mut s = format!("{}", f[2]);
 
             for (idx, arg) in params.iter().enumerate() {
-                s = s.replace(&format!("{}", arg), &format!("{}", input[idx]));
+                s = s.replace(&format!("{}", arg), &format!("{}", arguments[idx]));
             }
 
             return match parse(&s.chars().collect()) {
@@ -659,9 +659,13 @@ fn apply(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
                 Err(err) => Err(err)
             };
         }
-    }
 
-    Err(LispError::EvalError("execution error".to_string()))
+        if let Some(LispToken::Func(func)) = symbol {
+            return func(ctx, &arguments);
+        }
+        
+        return Err(LispError::InvalidArgument);
+    }
 }
 
 fn quit(_ctx: &mut LispContext, _args: &Vec<LispToken>) -> LispResult {
