@@ -25,6 +25,8 @@ quote
 
 let
 lambda
+apply
+quit
 ```
 
 ## Example

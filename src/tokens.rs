@@ -27,8 +27,9 @@ impl<T> LispContext<T> {
 pub enum LispError {
     EndOfSequence,
     EvalError(String),
+    InvalidArgument,
+    InvalidNoArguments,
     Quit,
-    NotImplemented,
     Other(String),
     UnexpectedChar(char, usize),
 }
@@ -42,9 +43,12 @@ impl fmt::Display for LispError {
             LispError::EvalError(msg) => {
                 write!(f, "error: {}", msg)
             },
-            LispError::NotImplemented => {
-                write!(f, "error: not implemented.")
+            LispError::InvalidArgument => {
+                write!(f, "error: invalid argument(s) given.")
             },
+            LispError::InvalidNoArguments => {
+                write!(f, "error: invalid number of arguments given.")
+            }
             LispError::UnexpectedChar(ch, idx) => {
                 write!(f, "error: unexpected character '{}' at col {}.", ch, idx)
             },
@@ -76,7 +80,7 @@ impl LispToken {
     pub fn to_float(&self) -> Result<f32, LispError> {
         match self {
             LispToken::Num(s) => Ok(s.parse().unwrap()),
-            _ => Err(LispError::EvalError(format!("value is not a number `{}`", self)))
+            _ => Err(LispError::EvalError("value is not a number.".to_string()))
         }
     }
 
@@ -89,6 +93,36 @@ impl LispToken {
             }
         }
         return Err(LispError::EvalError("value is not a boolean.".to_string()));
+    }
+
+    pub fn to_vec_bool(args: &Vec<LispToken>) -> Result<Vec<bool>, LispError> {
+        let mut xs = Vec::new();
+
+        for arg in args {
+            match arg.to_bool() {
+                Ok(f) => xs.push(f),
+                Err(err) => {
+                    return Err(err);
+                }
+            }
+        }
+
+        Ok(xs)
+    }
+
+    pub fn to_vec_float(args: &Vec<LispToken>) -> Result<Vec<f32>, LispError> {
+        let mut xs = Vec::new();
+
+        for arg in args {
+            match arg.to_float() {
+                Ok(f) => xs.push(f),
+                Err(err) => {
+                    return Err(err);
+                }
+            }
+        }
+
+        Ok(xs)
     }
 }
 

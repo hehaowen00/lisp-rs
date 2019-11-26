@@ -84,7 +84,6 @@ impl Default for LispEnv {
         default_ctx.insert(&String::from("let"), LispToken::Func(label));
         default_ctx.insert(&String::from("lambda"), LispToken::Func(lambda));
         default_ctx.insert(&String::from("apply"), LispToken::Func(apply));
-        
         default_ctx.insert(&String::from("quit"), LispToken::Func(quit));
         
         LispEnv {
@@ -147,100 +146,137 @@ fn eval(ctx: &mut LispContext<LispToken>, expr: &LispToken) -> Result<LispToken,
     }
 }
 
-fn add(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
-    if args.len() < 2 {
-        Err(LispError::EvalError("insufficent number of arguments given".to_string()))
-    } else {
-        let mut result : f32 = 0.0;
-
-        for arg in args.iter().map(|tok| eval(ctx, tok).unwrap().to_float()) {
-            match arg {
-                Ok(value) => result = result + value,
-                Err(err) => {
-                    return Err(err);
-                }
+fn eval_list(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<Vec<LispToken>, LispError> {
+    let mut xs = Vec::new();
+    for arg in args {
+        match eval(ctx, arg) {
+            Ok(x) => xs.push(x),
+            Err(err) => {
+                return Err(err);
             }
         }
+    }
 
-        Ok(LispToken::from(result))
+    Ok(xs)
+}
+
+fn add(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
+    if args.len() < 2 {
+        Err(LispError::InvalidNoArguments)
+    } else {
+        let lst = match eval_list(ctx, args) {
+            Ok(xs) => xs,
+            Err(err) => {
+                return Err(err);
+            }
+        };
+
+        match LispToken::to_vec_float(&lst) {
+            Ok(xs) => {
+                if xs.len() < 2 {
+                    Err(LispError::InvalidNoArguments)
+                } else {
+                    let result : f32 = xs.iter().sum();
+                    Ok(LispToken::from(result))
+                }
+            },
+            Err(err) => {
+                Err(err)
+            }
+        }
     }
 }
 
 fn sub(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
     if args.len() < 2 {
-        Err(LispError::EvalError("insufficent number of arguments given.".to_string()))
+        Err(LispError::InvalidNoArguments)
     } else {
-        let mut result : f32 = match eval(ctx, &args[0].clone()).unwrap().to_float() {
-            Ok(value) => value,
+        let lst = match eval_list(ctx, args) {
+            Ok(xs) => xs,
             Err(err) => {
                 return Err(err);
             }
         };
 
-        for arg in args.iter().skip(1).map(|tok| eval(ctx, tok).unwrap().to_float()) {
-            match arg {
-                Ok(value) => result = result - value,
-                Err(err) => {
-                    return Err(err);
+        match LispToken::to_vec_float(&lst) {
+            Ok(xs) => {
+                if xs.len() < 2 {
+                    Err(LispError::InvalidNoArguments)
+                } else {
+                    let value : f32 = xs.iter().skip(1).sum();
+                    Ok(LispToken::from(xs[0] - value))
                 }
+            },
+            Err(err) => {
+                return Err(err);
             }
         }
-
-        Ok(LispToken::from(result))
     }
 }
 
 fn mul(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
-    if args.len() > 2 {
-        Err(LispError::EvalError("insufficent number of arguments given.".to_string()))
+    if args.len() != 2 {
+        Err(LispError::InvalidNoArguments)
     } else {
-        let mut result : f32 = match eval(ctx, &args[0].clone()).unwrap().to_float() {
-            Ok(value) => value,
+        let lst = match eval_list(ctx, args) {
+            Ok(xs) => xs,
             Err(err) => {
                 return Err(err);
             }
         };
 
-        for arg in args.iter().skip(1).map(|tok| eval(ctx, tok).unwrap().to_float()) {
-            match arg {
-                Ok(value) => result = result * value,
-                Err(err) => {
-                    return Err(err);
+        match LispToken::to_vec_float(&lst) {
+            Ok(xs) => {
+                if xs.len() < 2 {
+                    Err(LispError::InvalidNoArguments)
+                } else {
+                    let mut result : f32 = xs[0];
+                    for value in xs.iter().skip(1) {
+                        result = result * value;
+                    }
+                    Ok(LispToken::from(result))
                 }
+            },
+            Err(err) => {
+                return Err(err);
             }
         }
-
-        Ok(LispToken::from(result))
     }
 }
 
 fn div(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
-    if args.len() < 2 {
-        Err(LispError::EvalError("insufficent number of arguments given.".to_string()))
+    if args.len() != 2 {
+        Err(LispError::InvalidNoArguments)
     } else {
-        let mut result : f32 = match eval(ctx, &args[0].clone()).unwrap().to_float() {
-            Ok(value) => value,
+        let lst = match eval_list(ctx, args) {
+            Ok(xs) => xs,
             Err(err) => {
                 return Err(err);
             }
         };
 
-        for arg in args.iter().skip(1).map(|tok| eval(ctx, tok).unwrap().to_float()) {
-            match arg {
-                Ok(value) => result = result / value,
-                Err(err) => {
-                    return Err(err);
+        match LispToken::to_vec_float(&lst) {
+            Ok(xs) => {
+                if xs.len() < 2 {
+                    Err(LispError::InvalidNoArguments)
+                } else {
+                    let mut result : f32 = xs[0];
+                    for value in xs.iter().skip(1) {
+                        result = result / value;
+                    }
+                    Ok(LispToken::from(result))
                 }
+            },
+            Err(err) => {
+                return Err(err);
             }
         }
-
-        Ok(LispToken::from(result))
     }
 }
 
 fn lt(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
     if args.len() != 2 {
-        Err(LispError::EvalError("incorrect number of arguments given.".to_string()))
+        Err(LispError::InvalidNoArguments)
     } else {
         let a = match eval(ctx, &args[0].clone()) {
             Ok(value) => value,
@@ -261,19 +297,19 @@ fn lt(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispTok
                 let (x, y) : (f32, f32) = (a.parse().unwrap(), b.parse().unwrap());
 
                 if x < y {
-                    Ok(LispToken::Sym("#t".to_string()))
+                    Ok(LispToken::from(true))
                 } else {
-                    Ok(LispToken::Sym("#f".to_string()))
+                    Ok(LispToken::from(false))
                 }
             },
-            _ => Err(LispError::EvalError("invalid arguments given.".to_string()))
+            _ => Err(LispError::InvalidArgument)
         }
     }
 }
 
 fn gt(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
     if args.len() != 2 {
-        Err(LispError::EvalError("incorrect number of arguments given.".to_string()))
+        Err(LispError::InvalidNoArguments)
     } else {
         let a = match eval(ctx, &args[0].clone()) {
             Ok(value) => value,
@@ -294,71 +330,75 @@ fn gt(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispTok
                 let (x, y) : (f32, f32) = (a.parse().unwrap(), b.parse().unwrap());
 
                 if x > y {
-                    Ok(LispToken::Sym("#t".to_string()))
+                    Ok(LispToken::from(true))
                 } else {
-                    Ok(LispToken::Sym("#f".to_string()))
+                    Ok(LispToken::from(false))
                 }
             },
-            _ => Err(LispError::EvalError("invalid arguments given.".to_string()))
+            _ => Err(LispError::InvalidArgument)
         }
     }
 }
 
 fn and(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
     if args.len() < 2 {
-        Err(LispError::EvalError("insufficent number of arguments given.".to_string()))
+        Err(LispError::InvalidNoArguments)
     } else {
-        let mut result : bool = match eval(ctx, &args[0].clone()).unwrap().to_bool() {
-            Ok(value) => value,
+        let lst = match eval_list(ctx, args) {
+            Ok(xs) => xs,
             Err(err) => {
                 return Err(err);
             }
         };
 
-        for arg in args.iter().skip(1).map(|tok| eval(ctx, tok).unwrap().to_bool()) {
-            match arg {
-                Ok(value) => result = result && value,
-                Err(err) => {
-                    return Err(err);
+        match LispToken::to_vec_bool(&lst) {
+            Ok(xs) => {
+                if xs.len() < 2 {
+                    Err(LispError::InvalidNoArguments)
+                } else {
+                    let mut result : bool = xs[0];
+                    for value in xs.iter().skip(1) {
+                        result = result && *value;
+                    }
+                    Ok(LispToken::from(result))
                 }
+            },
+            Err(err) => {
+                return Err(err);
             }
         }
-
-        Ok(LispToken::from(result))
     }
 }
 
 fn or(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
     if args.len() < 2 {
-        Err(LispError::EvalError("insufficent number of arguments given.".to_string()))
+        Err(LispError::InvalidNoArguments)
     } else {
-        let mut result : bool = match eval(ctx, &args[0].clone()).unwrap().to_bool() {
-            Ok(value) => value,
+        let lst = match eval_list(ctx, args) {
+            Ok(xs) => xs,
             Err(err) => {
                 return Err(err);
             }
         };
 
-        for arg in args.iter().skip(1).map(|tok| eval(ctx, tok).unwrap().to_bool()) {
-            match arg {
-                Ok(value) => result = result || value,
-                Err(err) => {
-                    return Err(err);
+        match LispToken::to_vec_bool(&lst) {
+            Ok(xs) => {
+                if xs.len() < 2 {
+                    Err(LispError::InvalidNoArguments)
+                } else {
+                    Ok(LispToken::from(xs.contains(&true)))
                 }
-            }
-
-            if result {
-                return Ok(LispToken::from(result));
+            },
+            Err(err) => {
+                return Err(err);
             }
         }
-
-        Ok(LispToken::from(result))
     }
 }
 
 fn not(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
     if args.len() != 1 {
-        Err(LispError::EvalError("insufficent number of arguments given.".to_string()))
+        Err(LispError::InvalidNoArguments)
     } else {
         let result : bool = match eval(ctx, &args[0].clone()).unwrap().to_bool() {
             Ok(value) => value,
@@ -371,9 +411,9 @@ fn not(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispTo
     }
 }
 
-fn cons(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
+fn cons(_ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
     if args.len() < 1 {
-        Err(LispError::EvalError("incorrect number of arguments given.".to_string()))
+        Err(LispError::InvalidNoArguments)
     } else {
         Ok(LispToken::List(args.clone()))
     }
@@ -381,10 +421,14 @@ fn cons(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispT
 
 fn car(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
     if args.len() != 1 {
-        Err(LispError::EvalError("incorrect number of arguments given.".to_string()))
+        Err(LispError::InvalidNoArguments)
     } else {
         if let Ok(LispToken::List(lst)) = eval(ctx, &args[0]) {
-            Ok(lst[0].clone())
+            if lst.is_empty() {
+                Ok(LispToken::Sym("nil".to_string()))
+            } else {
+                Ok(lst[0].clone())
+            }
         } else {
             Ok(LispToken::Sym("nil".to_string()))
         }
@@ -393,7 +437,7 @@ fn car(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispTo
 
 fn cdr(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
     if args.len() != 1 {
-        Err(LispError::EvalError("incorrect number of arguments given.".to_string()))
+        Err(LispError::InvalidNoArguments)
     } else {
         if let Ok(LispToken::List(lst)) = eval(ctx, &args[0]) {
             Ok(LispToken::List(lst.iter().cloned().skip(1).collect()))
@@ -404,20 +448,20 @@ fn cdr(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispTo
 }
 
 
-fn atom(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
+fn atom(_ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
     if args.len() != 1 {
-        Err(LispError::EvalError("incorrect number of arguments given.".to_string()))
+        Err(LispError::InvalidNoArguments)
     } else {
         match args[0] {
-            LispToken::List(_) => Ok(LispToken::Sym("#f".to_string())),
-            _ => Ok(LispToken::Sym("#t".to_string()))
+            LispToken::List(_) => Ok(LispToken::from(false)),
+            _ => Ok(LispToken::from(true))
         }
     }
 }
 
 fn cond(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
     if args.len() < 1 {
-        return Err(LispError::EvalError("incorrect number of arguments given.".to_string()));
+        return Err(LispError::InvalidNoArguments);
     } else {
         for arg in args {
             if let LispToken::List(lst) = &arg {
@@ -442,19 +486,26 @@ fn cond(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispT
 
 fn eq(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
     if args.len() != 2 {
-        Err(LispError::EvalError("incorrect number of arguments given.".to_string()))
+        Err(LispError::InvalidNoArguments)
     } else {
-        if eval(ctx, &args[0]).unwrap() == eval(ctx, &args[1]).unwrap() {
-            Ok(LispToken::Sym("#t".to_string()))
+        let lst = match eval_list(ctx, args) {
+            Ok(xs) => xs,
+            Err(err) => {
+                return Err(err);
+            }
+        };
+
+        if lst.len() != 2 {
+            Err(LispError::InvalidNoArguments)
         } else {
-            Ok(LispToken::Sym("#f".to_string()))
+            Ok(LispToken::from(lst[0] == lst[1]))
         }
     }
 }
 
 fn neq(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
     if args.len() != 2 {
-        Err(LispError::EvalError("incorrect number of arguments given.".to_string()))
+        Err(LispError::InvalidNoArguments)
     } else {
         match eq(ctx, args) {
             Ok(res) => not(ctx, &vec![res]),
@@ -463,9 +514,9 @@ fn neq(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispTo
     }
 }
 
-fn quote(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
+fn quote(_ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
     if args.len() != 1 {
-        Err(LispError::EvalError("incorrect number of arguments given.".to_string()))
+        Err(LispError::InvalidNoArguments)
     } else {
         Ok(args[0].clone())
     }
@@ -473,7 +524,7 @@ fn quote(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<Lisp
 
 fn label(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
     if args.len() != 2 {
-        Err(LispError::EvalError("incorrect number of arguments given.".to_string()))
+        Err(LispError::InvalidNoArguments)
     } else {
         if let LispToken::Sym(s) = args[0].clone() {
             match eval(ctx, &args[1]) {
@@ -490,7 +541,7 @@ fn label(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<Lisp
             }
 
         } else {
-            Err(LispError::EvalError("invalid token.".to_string()))
+            Err(LispError::InvalidArgument)
         }
     }
 }
@@ -516,7 +567,7 @@ fn lambda(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<Lis
 
 fn apply(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
     if args.len() != 2 {
-        return Err(LispError::EvalError("incorrect number of arguments given.".to_string()));
+        return Err(LispError::InvalidNoArguments);
     } else {
         let lambda = match args[0] {
             LispToken::List(_) => args[0].clone(),
@@ -528,11 +579,11 @@ fn apply(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<Lisp
 
         if let LispToken::List(f) = lambda {
             if f.len() != 3 {
-                return Err(LispError::EvalError("incorrect number of arguments given.".to_string()));
+                return Err(LispError::InvalidNoArguments);
             }
 
             if LispToken::Sym("lambda".to_string()) != f[0] {
-                return Err(LispError::EvalError("invalid argument given.".to_string()))
+                return Err(LispError::InvalidArgument)
             }
 
             let params : Vec<LispToken> = match &f[1] {
@@ -555,7 +606,7 @@ fn apply(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<Lisp
             };
 
             if input.len() != params.len() {
-                return Err(LispError::EvalError("incorrect number of arguments given.".to_string()));
+                return Err(LispError::InvalidNoArguments);
             }
 
             let mut s = format!("{}", f[2]);
@@ -574,6 +625,6 @@ fn apply(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<Lisp
     Err(LispError::EvalError("execution error".to_string()))
 }
 
-fn quit(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
+fn quit(_ctx: &mut LispContext<LispToken>, _args: &Vec<LispToken>) -> Result<LispToken, LispError> {
     Err(LispError::Quit)
 }
