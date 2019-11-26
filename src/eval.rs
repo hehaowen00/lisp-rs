@@ -444,7 +444,7 @@ fn eq(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispTok
     if args.len() != 2 {
         Err(LispError::EvalError("incorrect number of arguments given.".to_string()))
     } else {
-        if args[0] == args[1] {
+        if eval(ctx, &args[0]).unwrap() == eval(ctx, &args[1]).unwrap() {
             Ok(LispToken::Sym("#t".to_string()))
         } else {
             Ok(LispToken::Sym("#f".to_string()))
