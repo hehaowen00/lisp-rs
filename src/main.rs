@@ -1,6 +1,7 @@
 extern crate itertools;
 extern crate rustyline;
 
+mod context;
 mod tokens;
 mod parser;
 mod eval;

@@ -1,27 +1,7 @@
-use std::collections::{HashMap};
+use crate::context::{Context};
+use itertools::{Itertools};
 use std::convert::{From};
 use std::{fmt};
-use itertools::{Itertools};
-
-pub struct LispContext<T> {
-    globals: HashMap<String, T>
-}
-
-impl<T> LispContext<T> {
-    pub fn new() -> LispContext<T> {
-        LispContext {
-            globals: HashMap::new()
-        }
-    }
-
-    pub fn get(&self, k: String) -> Option<&T> {
-        self.globals.get(&k)
-    }
-
-    pub fn insert(&mut self, k: &String, s: T) {
-        self.globals.insert(k.to_string(), s);
-    }
-}
 
 #[derive(Debug)]
 pub enum LispError {
@@ -62,7 +42,7 @@ impl fmt::Display for LispError {
 
 #[derive(Clone)]
 pub enum LispToken {
-    Func(fn(&mut LispContext<Self>, &Vec<Self>) -> Result<Self, LispError>),
+    Func(fn(&mut Context<Self>, &Vec<Self>) -> Result<Self, LispError>),
     List(Vec<Self>),
     Num(String),
     Str(String),

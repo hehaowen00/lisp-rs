@@ -1,9 +1,13 @@
-use crate::tokens::{LispContext, LispError, LispToken};
+use crate::context::{Context};
+use crate::tokens::{LispError, LispToken};
 use crate::parser::{parse};
 use rustyline::{Editor};
 
+type LispContext = Context<LispToken>;
+type LispResult = Result<LispToken, LispError>;
+
 pub struct LispEnv {
-    pub ctx: LispContext<LispToken>
+    pub ctx: LispContext
 }
 
 impl LispEnv {
@@ -13,41 +17,43 @@ impl LispEnv {
         println!("");
 
         'repl: loop {  
-            if let Ok(mut line) = editor.readline("* ") {
-                line = line.trim_end().to_string();
-                line.push(' ');
+            let read_result = editor.readline("* ");
+            if let Err(_) = read_result {
+                break 'repl;
+            }
 
-                let result = parse(&line.chars().collect());
+            let mut line = read_result.unwrap();
+            line = line.trim_end().to_string();
+            line.push(' ');
 
-                if let Err(err) = result {
-                    println!("{}", err);
-                    continue;
-                }
+            let result = parse(&line.chars().collect());
 
-                match &mut self.eval(&result.unwrap()) {
-                    Ok(res) => {
-                        editor.add_history_entry(line.trim_end());
-                        println!("> {}\n", res);
-                    },
-                    Err(err) => {
-                        if let LispError::Quit = err {
-                            println!("");
-                            break 'repl;
-                        }
+            if let Err(err) = result {
+                println!("{}", err);
+                continue;
+            }
 
-                        editor.add_history_entry(line.trim_end());
-                        println!("{}", err);
+            match &mut self.eval(&result.unwrap()) {
+                Ok(res) => {
+                    editor.add_history_entry(line.trim_end());
+                    println!("> {}\n", res);
+                },
+                Err(err) => {
+                    if let LispError::Quit = err {
+                        println!("");
+                        break 'repl;
                     }
+
+                    editor.add_history_entry(line.trim_end());
+                    println!("{}", err);
                 }
-            } else {
-                break;
             }
         }
 
         editor.save_history("./session.lisp").unwrap();
     }
     
-    fn eval(&mut self, expr: &LispToken) -> Result<LispToken, LispError> {
+    fn eval(&mut self, expr: &LispToken) -> LispResult {
         eval(&mut self.ctx, expr)
     }
 }
@@ -56,36 +62,36 @@ impl Default for LispEnv {
     fn default() -> Self {
         let mut default_ctx = LispContext::new();
         
-        default_ctx.insert(&String::from("#t"), LispToken::from(true));
-        default_ctx.insert(&String::from("#f"), LispToken::from(false));
+        default_ctx.insert(String::from("#t"), LispToken::from(true));
+        default_ctx.insert(String::from("#f"), LispToken::from(false));
 
-        default_ctx.insert(&String::from("+"), LispToken::Func(add));
-        default_ctx.insert(&String::from("-"), LispToken::Func(sub));
-        default_ctx.insert(&String::from("*"), LispToken::Func(mul));
-        default_ctx.insert(&String::from("/"), LispToken::Func(div));
+        default_ctx.insert(String::from("+"), LispToken::Func(add));
+        default_ctx.insert(String::from("-"), LispToken::Func(sub));
+        default_ctx.insert(String::from("*"), LispToken::Func(mul));
+        default_ctx.insert(String::from("/"), LispToken::Func(div));
 
-        default_ctx.insert(&String::from(">"), LispToken::Func(gt));
-        default_ctx.insert(&String::from("<"), LispToken::Func(lt));
+        default_ctx.insert(String::from(">"), LispToken::Func(gt));
+        default_ctx.insert(String::from("<"), LispToken::Func(lt));
 
-        default_ctx.insert(&String::from("and"), LispToken::Func(and));
-        default_ctx.insert(&String::from("or"), LispToken::Func(or));
-        default_ctx.insert(&String::from("not"), LispToken::Func(not));
+        default_ctx.insert(String::from("and"), LispToken::Func(and));
+        default_ctx.insert(String::from("or"), LispToken::Func(or));
+        default_ctx.insert(String::from("not"), LispToken::Func(not));
 
-        default_ctx.insert(&String::from("cons"), LispToken::Func(cons));
-        default_ctx.insert(&String::from("car"), LispToken::Func(car));
-        default_ctx.insert(&String::from("cdr"), LispToken::Func(cdr));
+        default_ctx.insert(String::from("cons"), LispToken::Func(cons));
+        default_ctx.insert(String::from("car"), LispToken::Func(car));
+        default_ctx.insert(String::from("cdr"), LispToken::Func(cdr));
 
-        default_ctx.insert(&String::from("eq"), LispToken::Func(eq));
-        default_ctx.insert(&String::from("neq"), LispToken::Func(neq));
+        default_ctx.insert(String::from("eq"), LispToken::Func(eq));
+        default_ctx.insert(String::from("neq"), LispToken::Func(neq));
 
-        default_ctx.insert(&String::from("atom"), LispToken::Func(atom));
-        default_ctx.insert(&String::from("cond"), LispToken::Func(cond));
-        default_ctx.insert(&String::from("quote"), LispToken::Func(quote));
+        default_ctx.insert(String::from("atom"), LispToken::Func(atom));
+        default_ctx.insert(String::from("cond"), LispToken::Func(cond));
+        default_ctx.insert(String::from("quote"), LispToken::Func(quote));
 
-        default_ctx.insert(&String::from("let"), LispToken::Func(label));
-        default_ctx.insert(&String::from("lambda"), LispToken::Func(lambda));
-        default_ctx.insert(&String::from("apply"), LispToken::Func(apply));
-        default_ctx.insert(&String::from("quit"), LispToken::Func(quit));
+        default_ctx.insert(String::from("let"), LispToken::Func(label));
+        default_ctx.insert(String::from("lambda"), LispToken::Func(lambda));
+        default_ctx.insert(String::from("apply"), LispToken::Func(apply));
+        default_ctx.insert(String::from("quit"), LispToken::Func(quit));
         
         LispEnv {
             ctx: default_ctx
@@ -93,47 +99,17 @@ impl Default for LispEnv {
     }
 }
 
-fn eval(ctx: &mut LispContext<LispToken>, expr: &LispToken) -> Result<LispToken, LispError> {
+fn eval(ctx: &mut LispContext, expr: &LispToken) -> LispResult {
     match expr {
-        LispToken::List(lst) => {
-            if lst.is_empty() {
-                return Ok(expr.clone());
-            }
-            
-            if let LispToken::List(test) = lst[0].clone() {
-                if test[0] == LispToken::Sym("lambda".to_string()) {
-                    return lambda(ctx, &lst);
-                }
-            }
-
-            if let Some(sym) = lst.iter().next() {
-                let symbol = eval(ctx, &sym.clone());
-
-                if let Ok(LispToken::Func(func)) = symbol {
-                    let v = lst.iter().skip(1).map(|tok| tok.clone()).collect();
-                    return func(ctx, &v);
-                } else if let Err(err) = symbol {
-                    return Err(err);
-                }
-                
-                let expr_str = LispToken::List(lst.iter().map(|tok| eval(ctx, tok).unwrap()).collect());
-
-                if format!("{}", expr_str).contains("lambda") {
-                    return eval(ctx, &expr_str);
-                } else {
-                    return Ok(expr_str);
-                }
-
-            } else {
-                Ok(LispToken::List(lst.iter().map(|tok| eval(ctx, tok).unwrap()).collect()))
-            }
+        LispToken::List(_) => {
+            eval_list(ctx, expr)
         },
         LispToken::Sym(s) => {
             if let Some(sym) = ctx.get(s.to_string()) {
-                Ok((*sym).clone())
-            } else {
-                Err(LispError::EvalError(format!("undefined symbol `{:?}`", expr.clone())))
+                return Ok((*sym).clone());
             }
+
+            Err(LispError::EvalError(format!("undefined symbol `{:?}`", expr.clone())))
         },
         LispToken::Num(_) => {
             Ok(expr.clone())
@@ -143,11 +119,67 @@ fn eval(ctx: &mut LispContext<LispToken>, expr: &LispToken) -> Result<LispToken,
         },
         _ => {
             Err(LispError::EvalError("unexpected expression.".to_string()))
-        },
+        }
     }
 }
 
-fn eval_list(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<Vec<LispToken>, LispError> {
+fn eval_list(ctx: &mut LispContext, expr: &LispToken) -> LispResult {
+    let mut lst = &Vec::new();
+
+    match expr {
+        LispToken::List(xs) => lst = xs,
+        _ => {}
+    }
+
+    if lst.is_empty() {
+        return Ok(expr.clone());
+    }
+    
+    if let LispToken::List(test) = lst[0].clone() {
+        if test[0] == LispToken::Sym("lambda".to_string()) {
+            return lambda(ctx, &lst);
+        }
+    }
+
+    if let Some(sym) = lst.iter().next() {
+        let symbol = eval(ctx, &sym.clone());
+
+        if let Err(_) = symbol {
+            return symbol;
+        }
+
+        if let LispToken::Func(func) = symbol.unwrap() {
+            let v = lst.iter().skip(1).map(|tok| tok.clone()).collect();
+            return func(ctx, &v);
+        }
+
+        // For all other tokens that aren't Func
+        
+        let mut xs = Vec::new();
+
+        for item in lst.iter() {
+            let result = eval(ctx, item);
+
+            if let Err(_) = result {
+                return result;
+            }
+
+            xs.push(result.unwrap());
+        }
+
+        let token_xs = LispToken::List(xs);
+
+        if format!("{}", token_xs).contains("lambda") {
+            return eval(ctx, &token_xs);
+        }
+
+        return Ok(token_xs);
+    }
+
+    Ok(LispToken::List(lst.iter().map(|tok| eval(ctx, tok).unwrap()).collect()))
+}
+
+fn eval_vec(ctx: &mut LispContext, args: &Vec<LispToken>) -> Result<Vec<LispToken>, LispError> {
     let mut xs = Vec::new();
 
     for arg in args {
@@ -162,12 +194,12 @@ fn eval_list(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<
     Ok(xs)
 }
 
-fn add(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
+fn add(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
     if args.len() < 2 {
         return Err(LispError::InvalidNoArguments);
     }
 
-    let lst = match eval_list(ctx, args) {
+    let lst = match eval_vec(ctx, args) {
         Ok(xs) => xs,
         Err(err) => {
             return Err(err);
@@ -189,12 +221,12 @@ fn add(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispTo
     }
 }
 
-fn sub(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
+fn sub(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
     if args.len() < 2 {
         return Err(LispError::InvalidNoArguments);
     }
 
-    let lst = match eval_list(ctx, args) {
+    let lst = match eval_vec(ctx, args) {
         Ok(xs) => xs,
         Err(err) => {
             return Err(err);
@@ -216,12 +248,12 @@ fn sub(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispTo
     }
 }
 
-fn mul(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
+fn mul(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
     if args.len() != 2 {
         return Err(LispError::InvalidNoArguments);
     }
 
-    let lst = match eval_list(ctx, args) {
+    let lst = match eval_vec(ctx, args) {
         Ok(xs) => xs,
         Err(err) => {
             return Err(err);
@@ -247,12 +279,12 @@ fn mul(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispTo
     }
 }
 
-fn div(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
+fn div(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
     if args.len() != 2 {
         return Err(LispError::InvalidNoArguments);
     }
 
-    let lst = match eval_list(ctx, args) {
+    let lst = match eval_vec(ctx, args) {
         Ok(xs) => xs,
         Err(err) => {
             return Err(err);
@@ -278,7 +310,7 @@ fn div(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispTo
     }
 }
 
-fn lt(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
+fn lt(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
     if args.len() != 2 {
         return Err(LispError::InvalidNoArguments);
     } 
@@ -311,7 +343,7 @@ fn lt(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispTok
     }
 }
 
-fn gt(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
+fn gt(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
     if args.len() != 2 {
         return Err(LispError::InvalidNoArguments);
     }
@@ -344,12 +376,12 @@ fn gt(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispTok
     }
 }
 
-fn and(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
+fn and(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
     if args.len() < 2 {
         return Err(LispError::InvalidNoArguments);
     }
 
-    let lst = match eval_list(ctx, args) {
+    let lst = match eval_vec(ctx, args) {
         Ok(xs) => xs,
         Err(err) => {
             return Err(err);
@@ -375,12 +407,12 @@ fn and(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispTo
     }
 }
 
-fn or(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
+fn or(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
     if args.len() < 2 {
         return Err(LispError::InvalidNoArguments);
     }
 
-    let lst = match eval_list(ctx, args) {
+    let lst = match eval_vec(ctx, args) {
         Ok(xs) => xs,
         Err(err) => {
             return Err(err);
@@ -401,7 +433,7 @@ fn or(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispTok
     }
 }
 
-fn not(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
+fn not(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
     if args.len() != 1 {
         return Err(LispError::InvalidNoArguments);
     }
@@ -416,7 +448,7 @@ fn not(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispTo
     Ok(LispToken::from(!result))
 }
 
-fn cons(_ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
+fn cons(_ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
     if args.len() < 1 {
         return Err(LispError::InvalidNoArguments);
     }
@@ -424,7 +456,7 @@ fn cons(_ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<Lisp
     Ok(LispToken::List(args.clone()))
 }
 
-fn car(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
+fn car(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
     if args.len() != 1 {
         return Err(LispError::InvalidNoArguments);
     }
@@ -440,7 +472,7 @@ fn car(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispTo
     Ok(LispToken::Sym("nil".to_string()))
 }
 
-fn cdr(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
+fn cdr(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
     if args.len() != 1 {
         return Err(LispError::InvalidNoArguments);
     }
@@ -453,7 +485,7 @@ fn cdr(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispTo
 }
 
 
-fn atom(_ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
+fn atom(_ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
     if args.len() != 1 {
         return Err(LispError::InvalidNoArguments);
     }
@@ -464,7 +496,7 @@ fn atom(_ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<Lisp
     }
 }
 
-fn cond(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
+fn cond(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
     if args.len() < 1 {
         return Err(LispError::InvalidNoArguments);
     }
@@ -491,12 +523,12 @@ fn cond(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispT
     Ok(LispToken::Sym("#nil".to_string()))
 }
 
-fn eq(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
+fn eq(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
     if args.len() != 2 {
         return Err(LispError::InvalidNoArguments);
     }
 
-    let lst = match eval_list(ctx, args) {
+    let lst = match eval_vec(ctx, args) {
         Ok(xs) => xs,
         Err(err) => {
             return Err(err);
@@ -510,7 +542,7 @@ fn eq(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispTok
     Ok(LispToken::from(lst[0] == lst[1]))
 }
 
-fn neq(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
+fn neq(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
     if args.len() != 2 {
         return Err(LispError::InvalidNoArguments);
     } 
@@ -521,7 +553,7 @@ fn neq(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispTo
     }
 }
 
-fn quote(_ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
+fn quote(_ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
     if args.len() != 1 {
         return Err(LispError::InvalidNoArguments);
     }
@@ -529,7 +561,7 @@ fn quote(_ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<Lis
     Ok(args[0].clone())
 }
 
-fn label(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
+fn label(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
     if args.len() != 2 {
         return Err(LispError::InvalidNoArguments);
     } 
@@ -538,7 +570,7 @@ fn label(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<Lisp
         match eval(ctx, &args[1]) {
             Ok(tok) => {
                 match eval(ctx, &tok) {
-                    Ok(result) => ctx.insert(&s, result),
+                    Ok(result) => ctx.insert(s, result),
                     Err(err) => return Err(err)
                 }
                 Ok(tok)
@@ -553,7 +585,7 @@ fn label(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<Lisp
     }
 }
 
-fn lambda(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
+fn lambda(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
     if args.len() == 2 {
         if let LispToken::List(lst) = &args[0] {
             if let LispToken::Sym(s) = &lst[0] {
@@ -572,7 +604,7 @@ fn lambda(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<Lis
     Ok(LispToken::List(lst))
 }
 
-fn apply(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
+fn apply(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
     if args.len() != 2 {
         return Err(LispError::InvalidNoArguments);
     } else {
@@ -632,6 +664,6 @@ fn apply(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<Lisp
     Err(LispError::EvalError("execution error".to_string()))
 }
 
-fn quit(_ctx: &mut LispContext<LispToken>, _args: &Vec<LispToken>) -> Result<LispToken, LispError> {
+fn quit(_ctx: &mut LispContext, _args: &Vec<LispToken>) -> LispResult {
     Err(LispError::Quit)
 }
