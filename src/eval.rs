@@ -115,12 +115,12 @@ fn eval(ctx: &mut LispContext<LispToken>, expr: &LispToken) -> Result<LispToken,
                     return Err(err);
                 }
                 
-                let new = LispToken::List(lst.iter().map(|tok| eval(ctx, tok).unwrap()).collect());
+                let expr_str = LispToken::List(lst.iter().map(|tok| eval(ctx, tok).unwrap()).collect());
 
-                if format!("{}", new).contains("lambda") {
-                    return eval(ctx, &new);
+                if format!("{}", expr_str).contains("lambda") {
+                    return eval(ctx, &expr_str);
                 } else {
-                    return Ok(new);
+                    return Ok(expr_str);
                 }
 
             } else {
@@ -131,7 +131,7 @@ fn eval(ctx: &mut LispContext<LispToken>, expr: &LispToken) -> Result<LispToken,
             if let Some(sym) = ctx.get(s.to_string()) {
                 Ok((*sym).clone())
             } else {
-                Err(LispError::EvalError(format!("undefined symbol {:?}", expr.clone())))
+                Err(LispError::EvalError(format!("undefined symbol `{:?}`", expr.clone())))
             }
         },
         LispToken::Num(_) => {
