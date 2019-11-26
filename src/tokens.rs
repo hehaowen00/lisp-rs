@@ -50,7 +50,7 @@ pub enum LispToken {
 }
 
 impl LispToken {
-    pub fn to_float(&self) -> Result<f32, LispError> {
+    pub fn to_float(&self) -> Result<f64, LispError> {
         match self {
             LispToken::Num(s) => Ok(s.parse().unwrap()),
             _ => Err(LispError::EvalError("value is not a number.".to_string()))
@@ -83,7 +83,7 @@ impl LispToken {
         Ok(xs)
     }
 
-    pub fn to_vec_float(args: &Vec<LispToken>) -> Result<Vec<f32>, LispError> {
+    pub fn to_vec_float(args: &Vec<LispToken>) -> Result<Vec<f64>, LispError> {
         let mut xs = Vec::new();
 
         for arg in args {
@@ -99,8 +99,8 @@ impl LispToken {
     }
 }
 
-impl From<f32> for LispToken {
-    fn from(num: f32) -> Self {
+impl From<f64> for LispToken {
+    fn from(num: f64) -> Self {
         LispToken::Num(format!("{}", num))
     }
 }

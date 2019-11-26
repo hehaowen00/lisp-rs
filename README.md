@@ -33,4 +33,7 @@ quit
 ```lisp
 (let fact (lambda (x) (cond ((eq x 1) 1) (#t (* x (fact (- x 1)))))))
 (fact 10) ; -> 3628800
+
+(let fib (lambda (x) (cond ((< x 2) x) (#t (+ (fib (- x 1)) (fib (- x 2)))))))
+(fib 45) ; -> 1134903170
 ```

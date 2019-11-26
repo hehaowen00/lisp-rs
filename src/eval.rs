@@ -214,7 +214,7 @@ fn add(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
                 return Err(LispError::InvalidNoArguments);
             }
 
-            let result : f32 = xs.iter().sum();
+            let result : f64 = xs.iter().sum();
             Ok(LispToken::from(result))
         },
         Err(err) => {
@@ -241,7 +241,7 @@ fn sub(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
                 return Err(LispError::InvalidNoArguments);
             }
 
-            let value : f32 = xs.iter().skip(1).sum();
+            let value : f64 = xs.iter().skip(1).sum();
             Ok(LispToken::from(xs[0] - value))
         },
         Err(err) => {
@@ -268,7 +268,7 @@ fn mul(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
                 return Err(LispError::InvalidNoArguments);
             }
 
-            let mut result : f32 = xs[0];
+            let mut result : f64 = xs[0];
             for value in xs.iter().skip(1) {
                 result = result * value;
             }
@@ -299,7 +299,7 @@ fn div(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
                 return Err(LispError::InvalidNoArguments);
             }
 
-            let mut result : f32 = xs[0];
+            let mut result : f64 = xs[0];
             for value in xs.iter().skip(1) {
                 result = result / value;
             }
@@ -333,7 +333,7 @@ fn lt(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
 
     match (a, b) {
         (LispToken::Num(a), LispToken::Num(b)) => {
-            let (x, y) : (f32, f32) = (a.parse().unwrap(), b.parse().unwrap());
+            let (x, y) : (f64, f64) = (a.parse().unwrap(), b.parse().unwrap());
 
             if x < y {
                 Ok(LispToken::from(true))
@@ -366,7 +366,7 @@ fn gt(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
 
     match (a, b) {
         (LispToken::Num(a), LispToken::Num(b)) => {
-            let (x, y) : (f32, f32) = (a.parse().unwrap(), b.parse().unwrap());
+            let (x, y) : (f64, f64) = (a.parse().unwrap(), b.parse().unwrap());
 
             if x > y {
                 Ok(LispToken::from(true))
