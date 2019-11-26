@@ -48,6 +48,8 @@ impl LispEnv {
                     println!("{}\n", err);
                 }
             }
+
+            self.ctx.clear_locals();
         }
 
         editor.save_history("./session.lisp").unwrap();
@@ -655,7 +657,19 @@ fn apply(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
             }
 
             return match parse(&s.chars().collect()) {
-                Ok(xs) => eval(ctx, &xs),
+                Ok(xs) => {
+                    match ctx.local_get(format!("{}", &xs)) {
+                        Some(result) => Ok(result.clone()),
+                        None => {
+                            let res = eval(ctx, &xs);
+                            if let Ok(value) = &res {
+                                ctx.local_insert(format!("{}", &xs), value.clone());
+                            }
+
+                            res
+                        }
+                    }
+                },
                 Err(err) => Err(err)
             };
         }
