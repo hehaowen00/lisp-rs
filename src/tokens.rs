@@ -1,7 +1,7 @@
-use std::collections::HashMap;
-use std::convert::From;
-use std::fmt;
-use itertools::Itertools;
+use std::collections::{HashMap};
+use std::convert::{From};
+use std::{fmt};
+use itertools::{Itertools};
 
 pub struct LispContext<T> {
     globals: HashMap<String, T>
@@ -70,13 +70,6 @@ pub enum LispToken {
 }
 
 impl LispToken {
-    pub fn display_result(result: &Result<LispToken, LispError>) {
-        match result {
-            Ok(res) => println!("{}\n", res),
-            Err(err) => println!("{}\n", err)
-        }
-    }
-
     pub fn to_float(&self) -> Result<f32, LispError> {
         match self {
             LispToken::Num(s) => Ok(s.parse().unwrap()),

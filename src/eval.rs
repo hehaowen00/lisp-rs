@@ -14,27 +14,28 @@ impl LispEnv {
 
         'repl: loop {  
             if let Ok(mut line) = editor.readline("* ") {
+                line = line.trim_end().to_string();
                 line.push(' ');
 
-                match parse(&line.chars().collect()) {
-                    Ok(xs) => {
-                        match &mut self.eval(&xs) {
-                            Err(err) => {
-                                if let LispError::Quit = err {
-                                    println!("");
-                                    break 'repl;
-                                } else {
-                                    editor.add_history_entry(line.as_str());
-                                    println!("{}", err);
-                                }
-                            },
-                            res => {
-                                editor.add_history_entry(line.as_str());
-                                LispToken::display_result(res);
-                            }
-                        }
+                let result = parse(&line.chars().collect());
+
+                if let Err(err) = result {
+                    println!("{}", err);
+                    continue;
+                }
+
+                match &mut self.eval(&result.unwrap()) {
+                    Ok(res) => {
+                        editor.add_history_entry(line.trim_end());
+                        println!("> {}\n", res);
                     },
                     Err(err) => {
+                        if let LispError::Quit = err {
+                            println!("");
+                            break 'repl;
+                        }
+
+                        editor.add_history_entry(line.trim_end());
                         println!("{}", err);
                     }
                 }
@@ -148,6 +149,7 @@ fn eval(ctx: &mut LispContext<LispToken>, expr: &LispToken) -> Result<LispToken,
 
 fn eval_list(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<Vec<LispToken>, LispError> {
     let mut xs = Vec::new();
+
     for arg in args {
         match eval(ctx, arg) {
             Ok(x) => xs.push(x),
@@ -162,387 +164,392 @@ fn eval_list(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<
 
 fn add(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
     if args.len() < 2 {
-        Err(LispError::InvalidNoArguments)
-    } else {
-        let lst = match eval_list(ctx, args) {
-            Ok(xs) => xs,
-            Err(err) => {
-                return Err(err);
-            }
-        };
+        return Err(LispError::InvalidNoArguments);
+    }
 
-        match LispToken::to_vec_float(&lst) {
-            Ok(xs) => {
-                if xs.len() < 2 {
-                    Err(LispError::InvalidNoArguments)
-                } else {
-                    let result : f32 = xs.iter().sum();
-                    Ok(LispToken::from(result))
-                }
-            },
-            Err(err) => {
-                Err(err)
+    let lst = match eval_list(ctx, args) {
+        Ok(xs) => xs,
+        Err(err) => {
+            return Err(err);
+        }
+    };
+
+    match LispToken::to_vec_float(&lst) {
+        Ok(xs) => {
+            if xs.len() < 2 {
+                return Err(LispError::InvalidNoArguments);
             }
+
+            let result : f32 = xs.iter().sum();
+            Ok(LispToken::from(result))
+        },
+        Err(err) => {
+            Err(err)
         }
     }
 }
 
 fn sub(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
     if args.len() < 2 {
-        Err(LispError::InvalidNoArguments)
-    } else {
-        let lst = match eval_list(ctx, args) {
-            Ok(xs) => xs,
-            Err(err) => {
-                return Err(err);
-            }
-        };
+        return Err(LispError::InvalidNoArguments);
+    }
 
-        match LispToken::to_vec_float(&lst) {
-            Ok(xs) => {
-                if xs.len() < 2 {
-                    Err(LispError::InvalidNoArguments)
-                } else {
-                    let value : f32 = xs.iter().skip(1).sum();
-                    Ok(LispToken::from(xs[0] - value))
-                }
-            },
-            Err(err) => {
-                return Err(err);
+    let lst = match eval_list(ctx, args) {
+        Ok(xs) => xs,
+        Err(err) => {
+            return Err(err);
+        }
+    };
+
+    match LispToken::to_vec_float(&lst) {
+        Ok(xs) => {
+            if xs.len() < 2 {
+                return Err(LispError::InvalidNoArguments);
             }
+
+            let value : f32 = xs.iter().skip(1).sum();
+            Ok(LispToken::from(xs[0] - value))
+        },
+        Err(err) => {
+            return Err(err);
         }
     }
 }
 
 fn mul(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
     if args.len() != 2 {
-        Err(LispError::InvalidNoArguments)
-    } else {
-        let lst = match eval_list(ctx, args) {
-            Ok(xs) => xs,
-            Err(err) => {
-                return Err(err);
-            }
-        };
+        return Err(LispError::InvalidNoArguments);
+    }
 
-        match LispToken::to_vec_float(&lst) {
-            Ok(xs) => {
-                if xs.len() < 2 {
-                    Err(LispError::InvalidNoArguments)
-                } else {
-                    let mut result : f32 = xs[0];
-                    for value in xs.iter().skip(1) {
-                        result = result * value;
-                    }
-                    Ok(LispToken::from(result))
-                }
-            },
-            Err(err) => {
-                return Err(err);
+    let lst = match eval_list(ctx, args) {
+        Ok(xs) => xs,
+        Err(err) => {
+            return Err(err);
+        }
+    };
+
+    match LispToken::to_vec_float(&lst) {
+        Ok(xs) => {
+            if xs.len() < 2 {
+                return Err(LispError::InvalidNoArguments);
             }
+
+            let mut result : f32 = xs[0];
+            for value in xs.iter().skip(1) {
+                result = result * value;
+            }
+            
+            Ok(LispToken::from(result))
+        },
+        Err(err) => {
+            return Err(err);
         }
     }
 }
 
 fn div(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
     if args.len() != 2 {
-        Err(LispError::InvalidNoArguments)
-    } else {
-        let lst = match eval_list(ctx, args) {
-            Ok(xs) => xs,
-            Err(err) => {
-                return Err(err);
-            }
-        };
+        return Err(LispError::InvalidNoArguments);
+    }
 
-        match LispToken::to_vec_float(&lst) {
-            Ok(xs) => {
-                if xs.len() < 2 {
-                    Err(LispError::InvalidNoArguments)
-                } else {
-                    let mut result : f32 = xs[0];
-                    for value in xs.iter().skip(1) {
-                        result = result / value;
-                    }
-                    Ok(LispToken::from(result))
-                }
-            },
-            Err(err) => {
-                return Err(err);
+    let lst = match eval_list(ctx, args) {
+        Ok(xs) => xs,
+        Err(err) => {
+            return Err(err);
+        }
+    };
+
+    match LispToken::to_vec_float(&lst) {
+        Ok(xs) => {
+            if xs.len() < 2 {
+                return Err(LispError::InvalidNoArguments);
             }
+
+            let mut result : f32 = xs[0];
+            for value in xs.iter().skip(1) {
+                result = result / value;
+            }
+
+            Ok(LispToken::from(result))
+        },
+        Err(err) => {
+            return Err(err);
         }
     }
 }
 
 fn lt(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
     if args.len() != 2 {
-        Err(LispError::InvalidNoArguments)
-    } else {
-        let a = match eval(ctx, &args[0].clone()) {
-            Ok(value) => value,
-            Err(err) => {
-                return Err(err);
-            }
-        };
+        return Err(LispError::InvalidNoArguments);
+    } 
 
-        let b = match eval(ctx, &args[1].clone()) {
-            Ok(value) => value,
-            Err(err) => {
-                return Err(err);
-            }
-        };
-
-        match (a, b) {
-            (LispToken::Num(a), LispToken::Num(b)) => {
-                let (x, y) : (f32, f32) = (a.parse().unwrap(), b.parse().unwrap());
-
-                if x < y {
-                    Ok(LispToken::from(true))
-                } else {
-                    Ok(LispToken::from(false))
-                }
-            },
-            _ => Err(LispError::InvalidArgument)
+    let a = match eval(ctx, &args[0].clone()) {
+        Ok(value) => value,
+        Err(err) => {
+            return Err(err);
         }
+    };
+
+    let b = match eval(ctx, &args[1].clone()) {
+        Ok(value) => value,
+        Err(err) => {
+            return Err(err);
+        }
+    };
+
+    match (a, b) {
+        (LispToken::Num(a), LispToken::Num(b)) => {
+            let (x, y) : (f32, f32) = (a.parse().unwrap(), b.parse().unwrap());
+
+            if x < y {
+                Ok(LispToken::from(true))
+            } else {
+                Ok(LispToken::from(false))
+            }
+        },
+        _ => Err(LispError::InvalidArgument)
     }
 }
 
 fn gt(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
     if args.len() != 2 {
-        Err(LispError::InvalidNoArguments)
-    } else {
-        let a = match eval(ctx, &args[0].clone()) {
-            Ok(value) => value,
-            Err(err) => {
-                return Err(err);
-            }
-        };
+        return Err(LispError::InvalidNoArguments);
+    }
 
-        let b = match eval(ctx, &args[1].clone()) {
-            Ok(value) => value,
-            Err(err) => {
-                return Err(err);
-            }
-        };
-
-        match (a, b) {
-            (LispToken::Num(a), LispToken::Num(b)) => {
-                let (x, y) : (f32, f32) = (a.parse().unwrap(), b.parse().unwrap());
-
-                if x > y {
-                    Ok(LispToken::from(true))
-                } else {
-                    Ok(LispToken::from(false))
-                }
-            },
-            _ => Err(LispError::InvalidArgument)
+    let a = match eval(ctx, &args[0].clone()) {
+        Ok(value) => value,
+        Err(err) => {
+            return Err(err);
         }
+    };
+
+    let b = match eval(ctx, &args[1].clone()) {
+        Ok(value) => value,
+        Err(err) => {
+            return Err(err);
+        }
+    };
+
+    match (a, b) {
+        (LispToken::Num(a), LispToken::Num(b)) => {
+            let (x, y) : (f32, f32) = (a.parse().unwrap(), b.parse().unwrap());
+
+            if x > y {
+                Ok(LispToken::from(true))
+            } else {
+                Ok(LispToken::from(false))
+            }
+        },
+        _ => Err(LispError::InvalidArgument)
     }
 }
 
 fn and(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
     if args.len() < 2 {
-        Err(LispError::InvalidNoArguments)
-    } else {
-        let lst = match eval_list(ctx, args) {
-            Ok(xs) => xs,
-            Err(err) => {
-                return Err(err);
-            }
-        };
+        return Err(LispError::InvalidNoArguments);
+    }
 
-        match LispToken::to_vec_bool(&lst) {
-            Ok(xs) => {
-                if xs.len() < 2 {
-                    Err(LispError::InvalidNoArguments)
-                } else {
-                    let mut result : bool = xs[0];
-                    for value in xs.iter().skip(1) {
-                        result = result && *value;
-                    }
-                    Ok(LispToken::from(result))
-                }
-            },
-            Err(err) => {
-                return Err(err);
+    let lst = match eval_list(ctx, args) {
+        Ok(xs) => xs,
+        Err(err) => {
+            return Err(err);
+        }
+    };
+
+    match LispToken::to_vec_bool(&lst) {
+        Ok(xs) => {
+            if xs.len() < 2 {
+                return Err(LispError::InvalidNoArguments);
             }
+
+            let mut result : bool = xs[0];
+            for value in xs.iter().skip(1) {
+                result = result && *value;
+            }
+
+            Ok(LispToken::from(result))
+        },
+        Err(err) => {
+            return Err(err);
         }
     }
 }
 
 fn or(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
     if args.len() < 2 {
-        Err(LispError::InvalidNoArguments)
-    } else {
-        let lst = match eval_list(ctx, args) {
-            Ok(xs) => xs,
-            Err(err) => {
-                return Err(err);
-            }
-        };
+        return Err(LispError::InvalidNoArguments);
+    }
 
-        match LispToken::to_vec_bool(&lst) {
-            Ok(xs) => {
-                if xs.len() < 2 {
-                    Err(LispError::InvalidNoArguments)
-                } else {
-                    Ok(LispToken::from(xs.contains(&true)))
-                }
-            },
-            Err(err) => {
-                return Err(err);
+    let lst = match eval_list(ctx, args) {
+        Ok(xs) => xs,
+        Err(err) => {
+            return Err(err);
+        }
+    };
+
+    match LispToken::to_vec_bool(&lst) {
+        Ok(xs) => {
+            if xs.len() < 2 {
+                return Err(LispError::InvalidNoArguments);
             }
+
+            Ok(LispToken::from(xs.contains(&true)))
+        },
+        Err(err) => {
+            return Err(err);
         }
     }
 }
 
 fn not(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
     if args.len() != 1 {
-        Err(LispError::InvalidNoArguments)
-    } else {
-        let result : bool = match eval(ctx, &args[0].clone()).unwrap().to_bool() {
-            Ok(value) => value,
-            Err(err) => {
-                return Err(err);
-            }
-        };
-
-        Ok(LispToken::from(!result))
+        return Err(LispError::InvalidNoArguments);
     }
+
+    let result : bool = match eval(ctx, &args[0].clone()).unwrap().to_bool() {
+        Ok(value) => value,
+        Err(err) => {
+            return Err(err);
+        }
+    };
+
+    Ok(LispToken::from(!result))
 }
 
 fn cons(_ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
     if args.len() < 1 {
-        Err(LispError::InvalidNoArguments)
-    } else {
-        Ok(LispToken::List(args.clone()))
+        return Err(LispError::InvalidNoArguments);
     }
+
+    Ok(LispToken::List(args.clone()))
 }
 
 fn car(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
     if args.len() != 1 {
-        Err(LispError::InvalidNoArguments)
-    } else {
-        if let Ok(LispToken::List(lst)) = eval(ctx, &args[0]) {
-            if lst.is_empty() {
-                Ok(LispToken::Sym("nil".to_string()))
-            } else {
-                Ok(lst[0].clone())
-            }
-        } else {
-            Ok(LispToken::Sym("nil".to_string()))
-        }
+        return Err(LispError::InvalidNoArguments);
     }
+
+    if let Ok(LispToken::List(lst)) = eval(ctx, &args[0]) {
+        if lst.is_empty() {
+            return Ok(LispToken::Sym("nil".to_string()));
+        }
+
+        return Ok(lst[0].clone());
+    }
+
+    Ok(LispToken::Sym("nil".to_string()))
 }
 
 fn cdr(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
     if args.len() != 1 {
-        Err(LispError::InvalidNoArguments)
-    } else {
-        if let Ok(LispToken::List(lst)) = eval(ctx, &args[0]) {
-            Ok(LispToken::List(lst.iter().cloned().skip(1).collect()))
-        } else {
-            Ok(LispToken::Sym("nil".to_string()))
-        }
+        return Err(LispError::InvalidNoArguments);
     }
+
+    if let Ok(LispToken::List(lst)) = eval(ctx, &args[0]) {
+        return Ok(LispToken::List(lst.iter().cloned().skip(1).collect()));
+    }
+
+    Ok(LispToken::Sym("nil".to_string()))
 }
 
 
 fn atom(_ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
     if args.len() != 1 {
-        Err(LispError::InvalidNoArguments)
-    } else {
-        match args[0] {
-            LispToken::List(_) => Ok(LispToken::from(false)),
-            _ => Ok(LispToken::from(true))
-        }
+        return Err(LispError::InvalidNoArguments);
+    }
+
+    match args[0] {
+        LispToken::List(_) => Ok(LispToken::from(false)),
+        _ => Ok(LispToken::from(true))
     }
 }
 
 fn cond(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
     if args.len() < 1 {
         return Err(LispError::InvalidNoArguments);
-    } else {
-        for arg in args {
-            if let LispToken::List(lst) = &arg {
-                if lst.len() != 2 {
-                    return Err(LispError::EvalError("malformed expression.".to_string()));
-                }
-                match eval(ctx, &lst[0]) {
-                    Ok(result) => {
-                        if let Ok(true) = result.to_bool() {
-                            return eval(ctx, &lst[1]);
-                        }
-                    },
-                    Err(err) => {
-                        return Err(err);   
+    }
+
+    for arg in args {
+        if let LispToken::List(lst) = &arg {
+            if lst.len() != 2 {
+                return Err(LispError::EvalError("malformed expression.".to_string()));
+            }
+
+            match eval(ctx, &lst[0]) {
+                Ok(result) => {
+                    if let Ok(true) = result.to_bool() {
+                        return eval(ctx, &lst[1]);
                     }
+                },
+                Err(err) => {
+                    return Err(err);   
                 }
             }
         }
     }
+
     Ok(LispToken::Sym("#nil".to_string()))
 }
 
 fn eq(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
     if args.len() != 2 {
-        Err(LispError::InvalidNoArguments)
-    } else {
-        let lst = match eval_list(ctx, args) {
-            Ok(xs) => xs,
-            Err(err) => {
-                return Err(err);
-            }
-        };
-
-        if lst.len() != 2 {
-            Err(LispError::InvalidNoArguments)
-        } else {
-            Ok(LispToken::from(lst[0] == lst[1]))
-        }
+        return Err(LispError::InvalidNoArguments);
     }
+
+    let lst = match eval_list(ctx, args) {
+        Ok(xs) => xs,
+        Err(err) => {
+            return Err(err);
+        }
+    };
+
+    if lst.len() != 2 {
+        return Err(LispError::InvalidNoArguments);
+    }
+
+    Ok(LispToken::from(lst[0] == lst[1]))
 }
 
 fn neq(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
     if args.len() != 2 {
-        Err(LispError::InvalidNoArguments)
-    } else {
-        match eq(ctx, args) {
-            Ok(res) => not(ctx, &vec![res]),
-            Err(err) => Err(err)
-        }
+        return Err(LispError::InvalidNoArguments);
+    } 
+
+    match eq(ctx, args) {
+        Ok(res) => not(ctx, &vec![res]),
+        Err(err) => Err(err)
     }
 }
 
 fn quote(_ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
     if args.len() != 1 {
-        Err(LispError::InvalidNoArguments)
-    } else {
-        Ok(args[0].clone())
+        return Err(LispError::InvalidNoArguments);
     }
+
+    Ok(args[0].clone())
 }
 
 fn label(ctx: &mut LispContext<LispToken>, args: &Vec<LispToken>) -> Result<LispToken, LispError> {
     if args.len() != 2 {
-        Err(LispError::InvalidNoArguments)
-    } else {
-        if let LispToken::Sym(s) = args[0].clone() {
-            match eval(ctx, &args[1]) {
-                Ok(tok) => {
-                    match eval(ctx, &tok) {
-                        Ok(result) => ctx.insert(&s, result),
-                        Err(err) => return Err(err)
-                    }
-                    Ok(tok)
-                },
-                Err(err) => {
-                    Err(err)
-                }
-            }
+        return Err(LispError::InvalidNoArguments);
+    } 
 
-        } else {
-            Err(LispError::InvalidArgument)
+    if let LispToken::Sym(s) = args[0].clone() {
+        match eval(ctx, &args[1]) {
+            Ok(tok) => {
+                match eval(ctx, &tok) {
+                    Ok(result) => ctx.insert(&s, result),
+                    Err(err) => return Err(err)
+                }
+                Ok(tok)
+            },
+            Err(err) => {
+                Err(err)
+            }
         }
+
+    } else {
+        Err(LispError::InvalidArgument)
     }
 }
 
