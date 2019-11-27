@@ -63,6 +63,7 @@ impl Default for LispEnv {
         
         symbols.insert(String::from("#t"), LispToken::from(true));
         symbols.insert(String::from("#f"), LispToken::from(false));
+        symbols.insert(String::from("#nil"), LispToken::from(false));
 
         symbols.insert(String::from("+"), LispToken::Func(add));
         symbols.insert(String::from("-"), LispToken::Func(sub));
