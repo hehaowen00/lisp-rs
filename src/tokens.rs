@@ -172,9 +172,9 @@ impl fmt::Display for LispToken {
 impl PartialEq for LispToken {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (LispToken::Num(a), LispToken::Num(b)) => { a == b },
-            (LispToken::Str(a), LispToken::Str(b)) => { a == b },
-            (LispToken::Sym(a), LispToken::Sym(b)) => { a == b },
+            (LispToken::Num(a), LispToken::Num(b)) => a == b,
+            (LispToken::Str(a), LispToken::Str(b)) => a == b,
+            (LispToken::Sym(a), LispToken::Sym(b)) => a == b,
             _ => false
         }
     }

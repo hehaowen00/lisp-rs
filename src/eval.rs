@@ -463,13 +463,13 @@ fn car(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
 
     if let Ok(LispToken::List(lst)) = eval(ctx, &args[0]) {
         if lst.is_empty() {
-            return Ok(LispToken::Sym("nil".to_string()));
+            return Ok(LispToken::Sym("#nil".to_string()));
         }
 
         return Ok(lst[0].clone());
     }
 
-    Ok(LispToken::Sym("nil".to_string()))
+    Ok(LispToken::Sym("#nil".to_string()))
 }
 
 fn cdr(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
@@ -481,7 +481,7 @@ fn cdr(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
         return Ok(LispToken::List(lst.iter().cloned().skip(1).collect()));
     }
 
-    Ok(LispToken::Sym("nil".to_string()))
+    Ok(LispToken::Sym("#nil".to_string()))
 }
 
 
@@ -641,7 +641,7 @@ fn apply(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
         };
 
         if expr.len() == 0 {
-            return Ok(LispToken::Sym("nil".to_string()));
+            return Ok(LispToken::Sym("#nil".to_string()));
         }
 
         if arguments.len() != params.len() {
