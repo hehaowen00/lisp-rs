@@ -566,7 +566,7 @@ fn label(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
     } 
 
     if let LispToken::Sym(s) = args[0].clone() {
-        match eval(ctx, &args[1]) {
+        return match eval(ctx, &args[1]) {
             Ok(tok) => {
                 match eval(ctx, &tok) {
                     Ok(result) => ctx.insert(s, result),
@@ -577,11 +577,10 @@ fn label(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
             Err(err) => {
                 Err(err)
             }
-        }
-
-    } else {
-        Err(LispError::InvalidArgument)
+        };
     }
+    
+    Err(LispError::InvalidArgument)
 }
 
 fn lambda(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
@@ -606,77 +605,77 @@ fn lambda(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
 fn apply(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
     if args.len() != 2 {
         return Err(LispError::InvalidNoArguments);
-    } else {
-        let symbol = match args[0] {
-            LispToken::List(_) => Some(args[0].clone()),
-            _ => match ctx.get(format!("{}", args[0])) {
-                Some(f) => Some(f.clone()),
-                None => None
-            }
-        };
-
-        let arguments = match &args[1] {
-            LispToken::List(xs) => xs.to_vec(),
-            x => vec![x.clone()]
-        };
-
-        if let Some(LispToken::List(f)) = symbol {
-            if f.len() != 3 {
-                return Err(LispError::InvalidNoArguments);
-            }
-
-            if LispToken::Sym("lambda".to_string()) != f[0] {
-                return Err(LispError::InvalidArgument)
-            }
-
-            let params : Vec<LispToken> = match &f[1] {
-                LispToken::List(xs) => xs.to_vec(),
-                _ => vec![]
-            };
-            
-            let expr = match &f[2] {
-                LispToken::List(xs) => xs.to_vec(),
-                _ => vec![]
-            };
-
-            if expr.len() == 0 {
-                return Ok(LispToken::Sym("nil".to_string()));
-            }
-
-            if arguments.len() != params.len() {
-                return Err(LispError::InvalidNoArguments);
-            }
-
-            let mut s = format!("{}", f[2]);
-
-            for (idx, arg) in params.iter().enumerate() {
-                s = s.replace(&format!("{}", arg), &format!("{}", arguments[idx]));
-            }
-
-            return match parse(&s.chars().collect()) {
-                Ok(xs) => {
-                    match ctx.get_local(format!("{}", &xs)) {
-                        Some(result) => Ok(result.clone()),
-                        None => {
-                            let res = eval(ctx, &xs);
-                            if let Ok(value) = &res {
-                                ctx.insert_local(format!("{}", &xs), value.clone());
-                            }
-
-                            res
-                        }
-                    }
-                },
-                Err(err) => Err(err)
-            };
-        }
-
-        if let Some(LispToken::Func(func)) = symbol {
-            return func(ctx, &arguments);
-        }
-        
-        return Err(LispError::InvalidArgument);
     }
+
+    let symbol = match args[0] {
+        LispToken::List(_) => Some(args[0].clone()),
+        _ => match ctx.get(format!("{}", args[0])) {
+            Some(f) => Some(f.clone()),
+            None => None
+        }
+    };
+
+    let arguments = match &args[1] {
+        LispToken::List(xs) => xs.to_vec(),
+        x => vec![x.clone()]
+    };
+
+    if let Some(LispToken::List(f)) = symbol {
+        if f.len() != 3 {
+            return Err(LispError::InvalidNoArguments);
+        }
+
+        if LispToken::Sym("lambda".to_string()) != f[0] {
+            return Err(LispError::InvalidArgument)
+        }
+
+        let params : Vec<LispToken> = match &f[1] {
+            LispToken::List(xs) => xs.to_vec(),
+            _ => vec![]
+        };
+        
+        let expr = match &f[2] {
+            LispToken::List(xs) => xs.to_vec(),
+            _ => vec![]
+        };
+
+        if expr.len() == 0 {
+            return Ok(LispToken::Sym("nil".to_string()));
+        }
+
+        if arguments.len() != params.len() {
+            return Err(LispError::InvalidNoArguments);
+        }
+
+        let mut s = format!("{}", f[2]);
+
+        for (idx, arg) in params.iter().enumerate() {
+            s = s.replace(&format!("{}", arg), &format!("{}", arguments[idx]));
+        }
+
+        return match parse(&s.chars().collect()) {
+            Ok(xs) => {
+                match ctx.get_local(format!("{}", &xs)) {
+                    Some(result) => Ok(result.clone()),
+                    None => {
+                        let res = eval(ctx, &xs);
+                        if let Ok(value) = &res {
+                            ctx.insert_local(format!("{}", &xs), value.clone());
+                        }
+
+                        res
+                    }
+                }
+            },
+            Err(err) => Err(err)
+        };
+    }
+
+    if let Some(LispToken::Func(func)) = symbol {
+        return func(ctx, &arguments);
+    }
+    
+    return Err(LispError::InvalidArgument);
 }
 
 fn quit(_ctx: &mut LispContext, _args: &Vec<LispToken>) -> LispResult {
