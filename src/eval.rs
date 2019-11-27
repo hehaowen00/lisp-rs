@@ -14,8 +14,6 @@ impl LispEnv {
     pub fn repl(&mut self) {
         let mut editor = Editor::<()>::new();
 
-        println!("");
-
         'repl: loop {  
             let read_result = editor.readline("* ");
             if let Err(_) = read_result {
@@ -62,41 +60,41 @@ impl LispEnv {
 
 impl Default for LispEnv {
     fn default() -> Self {
-        let mut default_ctx = LispContext::new();
+        let mut symbols = LispContext::new();
         
-        default_ctx.insert(String::from("#t"), LispToken::from(true));
-        default_ctx.insert(String::from("#f"), LispToken::from(false));
+        symbols.insert(String::from("#t"), LispToken::from(true));
+        symbols.insert(String::from("#f"), LispToken::from(false));
 
-        default_ctx.insert(String::from("+"), LispToken::Func(add));
-        default_ctx.insert(String::from("-"), LispToken::Func(sub));
-        default_ctx.insert(String::from("*"), LispToken::Func(mul));
-        default_ctx.insert(String::from("/"), LispToken::Func(div));
+        symbols.insert(String::from("+"), LispToken::Func(add));
+        symbols.insert(String::from("-"), LispToken::Func(sub));
+        symbols.insert(String::from("*"), LispToken::Func(mul));
+        symbols.insert(String::from("/"), LispToken::Func(div));
 
-        default_ctx.insert(String::from(">"), LispToken::Func(gt));
-        default_ctx.insert(String::from("<"), LispToken::Func(lt));
+        symbols.insert(String::from(">"), LispToken::Func(gt));
+        symbols.insert(String::from("<"), LispToken::Func(lt));
 
-        default_ctx.insert(String::from("and"), LispToken::Func(and));
-        default_ctx.insert(String::from("or"), LispToken::Func(or));
-        default_ctx.insert(String::from("not"), LispToken::Func(not));
+        symbols.insert(String::from("and"), LispToken::Func(and));
+        symbols.insert(String::from("or"), LispToken::Func(or));
+        symbols.insert(String::from("not"), LispToken::Func(not));
 
-        default_ctx.insert(String::from("cons"), LispToken::Func(cons));
-        default_ctx.insert(String::from("car"), LispToken::Func(car));
-        default_ctx.insert(String::from("cdr"), LispToken::Func(cdr));
+        symbols.insert(String::from("cons"), LispToken::Func(cons));
+        symbols.insert(String::from("car"), LispToken::Func(car));
+        symbols.insert(String::from("cdr"), LispToken::Func(cdr));
 
-        default_ctx.insert(String::from("eq"), LispToken::Func(eq));
-        default_ctx.insert(String::from("neq"), LispToken::Func(neq));
+        symbols.insert(String::from("eq"), LispToken::Func(eq));
+        symbols.insert(String::from("neq"), LispToken::Func(neq));
 
-        default_ctx.insert(String::from("atom"), LispToken::Func(atom));
-        default_ctx.insert(String::from("cond"), LispToken::Func(cond));
-        default_ctx.insert(String::from("quote"), LispToken::Func(quote));
+        symbols.insert(String::from("atom"), LispToken::Func(atom));
+        symbols.insert(String::from("cond"), LispToken::Func(cond));
+        symbols.insert(String::from("quote"), LispToken::Func(quote));
 
-        default_ctx.insert(String::from("let"), LispToken::Func(label));
-        default_ctx.insert(String::from("lambda"), LispToken::Func(lambda));
-        default_ctx.insert(String::from("apply"), LispToken::Func(apply));
-        default_ctx.insert(String::from("quit"), LispToken::Func(quit));
+        symbols.insert(String::from("let"), LispToken::Func(label));
+        symbols.insert(String::from("lambda"), LispToken::Func(lambda));
+        symbols.insert(String::from("apply"), LispToken::Func(apply));
+        symbols.insert(String::from("quit"), LispToken::Func(quit));
         
         LispEnv {
-            ctx: default_ctx
+            ctx: symbols
         }
     }
 }
@@ -658,12 +656,12 @@ fn apply(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
 
             return match parse(&s.chars().collect()) {
                 Ok(xs) => {
-                    match ctx.local_get(format!("{}", &xs)) {
+                    match ctx.get_local(format!("{}", &xs)) {
                         Some(result) => Ok(result.clone()),
                         None => {
                             let res = eval(ctx, &xs);
                             if let Ok(value) = &res {
-                                ctx.local_insert(format!("{}", &xs), value.clone());
+                                ctx.insert_local(format!("{}", &xs), value.clone());
                             }
 
                             res
