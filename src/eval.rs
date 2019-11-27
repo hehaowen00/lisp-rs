@@ -1,9 +1,8 @@
-use crate::context::{Context};
+use crate::context::{LispContext};
 use crate::tokens::{LispError, LispToken};
 use crate::parser::{parse};
 use rustyline::{Editor};
 
-type LispContext = Context<LispToken>;
 type LispResult = Result<LispToken, LispError>;
 
 pub struct LispEnv {

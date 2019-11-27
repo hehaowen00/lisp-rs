@@ -1,4 +1,4 @@
-use crate::context::{Context};
+use crate::context::{LispContext};
 use itertools::{Itertools};
 use std::convert::{From};
 use std::{fmt};
@@ -42,7 +42,7 @@ impl fmt::Display for LispError {
 
 #[derive(Clone)]
 pub enum LispToken {
-    Func(fn(&mut Context<Self>, &Vec<Self>) -> Result<Self, LispError>),
+    Func(fn(&mut LispContext, &Vec<Self>) -> Result<Self, LispError>),
     List(Vec<Self>),
     Num(String),
     Str(String),
