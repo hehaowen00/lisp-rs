@@ -7,7 +7,7 @@ type LispContext = Context<LispToken>;
 type LispResult = Result<LispToken, LispError>;
 
 pub struct LispEnv {
-    pub ctx: LispContext
+    ctx: LispContext
 }
 
 impl LispEnv {
