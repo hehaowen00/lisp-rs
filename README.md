@@ -38,4 +38,7 @@ quit
 
 (let fib (lambda (x) (cond ((< x 2) x) (#t (+ (fib (- x 1)) (fib (- x 2)))))))
 (fib 45) ; -> 1134903170
+
+(car (cons 'a 'b))
+(cdr (cons 'a 'b))
 ```
