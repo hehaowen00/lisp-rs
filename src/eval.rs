@@ -27,7 +27,7 @@ impl LispEnv {
             line = line.trim_end().to_string();
             line.push(' ');
 
-            match self.parse(&line) {
+            match parse(&line.chars().collect()) {
                 Ok(expr) => {
                     if !self.eval(&expr) {
                         break 'repl;
@@ -41,10 +41,6 @@ impl LispEnv {
         }
 
         editor.save_history("./session.lisp").unwrap();
-    }
-
-    fn parse(&self, line: &str) -> LispResult {
-        parse(&line.chars().collect())
     }
     
     fn eval(&mut self, expr: &LispToken) -> bool {
