@@ -69,6 +69,7 @@ impl Default for LispEnv {
         symbols.insert(String::from("-"), LispToken::Func(sub));
         symbols.insert(String::from("*"), LispToken::Func(mul));
         symbols.insert(String::from("/"), LispToken::Func(div));
+        symbols.insert(String::from("mod"), LispToken::Func(modulo));
 
         symbols.insert(String::from(">"), LispToken::Func(gt));
         symbols.insert(String::from("<"), LispToken::Func(lt));
@@ -271,6 +272,28 @@ fn div(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
     let mut result : f64 = xs[0];
     for value in xs.iter().skip(1) {
         result = result / value;
+    }
+    
+    Ok(LispToken::from(result))
+}
+
+fn modulo(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
+    if args.len() != 2 {
+        return Err(LispError::InvalidNoArguments);
+    }
+
+    let lst = eval_vec(ctx, args)?;
+    let xs = LispToken::to_vec_float(&lst)?;
+
+    if xs.len() != 2 {
+        return Err(LispError::InvalidNoArguments);
+    }
+
+    let mut result : f64 = xs[0];
+
+    match xs.iter().skip(1).next() {
+        Some(value) => result = result % value,
+        _ => return Err(LispError::InvalidNoArguments)
     }
     
     Ok(LispToken::from(result))

@@ -169,7 +169,7 @@ fn is_bracket(ch: char) -> bool {
 }
 
 fn is_special(ch: char) -> bool {
-    "+-*/<>".contains(ch)
+    "+-*/%<>".contains(ch)
 }
 
 fn is_delimiter(ch: char) -> bool {

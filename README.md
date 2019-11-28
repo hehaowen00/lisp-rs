@@ -7,7 +7,7 @@ Supports boolean, numeric, string and symbol types.
 
 Currently implements the following symbols by default:
 ```
-+ - * / < >
++ - * / % < >
 
 and
 or
