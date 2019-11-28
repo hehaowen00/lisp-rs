@@ -104,6 +104,11 @@ impl Default for LispEnv {
 }
 
 fn eval(ctx: &mut LispContext, expr: &LispToken) -> LispResult {
+    match ctx.clone().get_local(format!("{}", expr)) {
+        Some(r) => return Ok(r.clone()),
+        _ => ()
+    }
+
     let result = match expr {
         LispToken::List(_) => {
             eval_list(ctx, expr)
@@ -561,14 +566,7 @@ fn apply(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
 
         let expr = parse(&s.chars().collect())?;
 
-        return match ctx.get_local(format!("{}", &expr)) {
-            Some(result) => Ok(result.clone()),
-            None => {
-                let result = eval(ctx, &expr)?;
-                ctx.insert_local(format!("{}", &expr), result.clone());
-                Ok(result)
-            }
-        };
+        return eval(ctx, &expr);
     }
 
     if let Some(LispToken::Func(func)) = symbol {
