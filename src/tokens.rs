@@ -68,31 +68,23 @@ impl LispToken {
         return Err(LispError::EvalError("value is not a boolean.".to_string()));
     }
 
-    pub fn to_vec_bool(args: &Vec<LispToken>) -> Result<Vec<bool>, LispError> {
+    pub fn to_vec_bool(tokens: &Vec<LispToken>) -> Result<Vec<bool>, LispError> {
         let mut xs = Vec::new();
 
-        for arg in args {
-            match arg.to_bool() {
-                Ok(f) => xs.push(f),
-                Err(err) => {
-                    return Err(err);
-                }
-            }
+        for token in tokens {
+            let b = token.to_bool()?;
+            xs.push(b);
         }
 
         Ok(xs)
     }
 
-    pub fn to_vec_float(args: &Vec<LispToken>) -> Result<Vec<f64>, LispError> {
+    pub fn to_vec_float(tokens: &Vec<LispToken>) -> Result<Vec<f64>, LispError> {
         let mut xs = Vec::new();
 
-        for arg in args {
-            match arg.to_float() {
-                Ok(f) => xs.push(f),
-                Err(err) => {
-                    return Err(err);
-                }
-            }
+        for token in tokens {
+            let f = token.to_float()?;
+            xs.push(f);
         }
 
         Ok(xs)
@@ -117,7 +109,7 @@ impl From<bool> for LispToken {
 
 impl fmt::Debug for LispToken {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        return match self {
+        match self {
             LispToken::Func(_) => {
                 write!(f, "Fn<()>")
             },
@@ -144,7 +136,7 @@ impl fmt::Debug for LispToken {
 
 impl fmt::Display for LispToken {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        return match self {
+        match self {
             LispToken::Func(_) => {
                 write!(f, "Fn<()>")
             },

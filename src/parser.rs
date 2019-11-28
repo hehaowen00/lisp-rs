@@ -37,9 +37,10 @@ fn parse_rd(expr: &Vec<char>, idx: &mut usize) -> Result<LispToken, LispError> {
 fn number(expr: &Vec<char>, idx: &mut usize) ->  Result<LispToken, LispError> {
     let mut s = expr[*idx].to_string();
     let mut decimal_set = false;
-    *idx = *idx + 1;
 
     loop {
+        *idx = *idx + 1;
+
         if *idx >= expr.len() {
             return Err(LispError::EndOfSequence);
         }
@@ -57,23 +58,23 @@ fn number(expr: &Vec<char>, idx: &mut usize) ->  Result<LispToken, LispError> {
         } else if !is_bracket(ch) {
             return Err(LispError::UnexpectedChar(ch, *idx));
         }
-
-        *idx = *idx + 1;
     }
 
     Ok(LispToken::Num(s))
 }
 
 fn symbol(expr: &Vec<char>, idx: &mut usize) ->  Result<LispToken, LispError> {
-    let mut s = String::new();
+    let mut s = expr[*idx].to_string();
 
     loop {
+        *idx = *idx + 1;
+
         if *idx >= expr.len() {
             return Err(LispError::EndOfSequence);
         }
-
+        
         let ch = expr[*idx];
-
+        
         if ch.is_alphanumeric() || ch == '-' || ch == '#' {
             s.push(ch);
         } else if is_delimiter(ch) {
@@ -82,18 +83,18 @@ fn symbol(expr: &Vec<char>, idx: &mut usize) ->  Result<LispToken, LispError> {
         } else {
             return Err(LispError::UnexpectedChar(ch, *idx));
         }
-
-        *idx = *idx + 1;
     }
 
     Ok(LispToken::Sym(s))
 }
 
 fn special(expr: &Vec<char>, idx: &mut usize) -> Result<LispToken, LispError> {
-    let mut s = String::new();
+    let mut s = expr[*idx].to_string();
     let mut not_set = true;
 
     loop {
+        *idx = *idx + 1;
+
         if *idx >= expr.len() {
             return Err(LispError::EndOfSequence);
         }
@@ -109,8 +110,6 @@ fn special(expr: &Vec<char>, idx: &mut usize) -> Result<LispToken, LispError> {
         } else {
             return Err(LispError::UnexpectedChar(ch, *idx));
         }
-
-        *idx = *idx + 1;
     }
 }
 
@@ -119,6 +118,7 @@ fn string(expr: &Vec<char>, idx: &mut usize) -> Result<LispToken, LispError> {
     
     loop {
         *idx = *idx + 1;
+
         if *idx >= expr.len() {
             return Err(LispError::EndOfSequence);
         }
@@ -134,9 +134,10 @@ fn string(expr: &Vec<char>, idx: &mut usize) -> Result<LispToken, LispError> {
 
 fn list(expr: &Vec<char>, idx: &mut usize) ->  Result<LispToken, LispError> {
     let mut lst = Vec::new();
-    *idx = *idx + 1;
 
     loop {
+        *idx = *idx + 1;
+
         if *idx >= expr.len() {
             return Err(LispError::Other("expected closing ')".to_string()));
         }
@@ -145,14 +146,8 @@ fn list(expr: &Vec<char>, idx: &mut usize) ->  Result<LispToken, LispError> {
             break;
         }
 
-        match parse_rd(&expr, idx) {
-            Ok(token) => lst.push(token),
-            Err(err) => {
-                return Err(err)
-            }
-        }
-
-        *idx = *idx + 1;
+        let token = parse_rd(&expr, idx)?;
+        lst.push(token);
     }
 
     Ok(LispToken::List(lst))
