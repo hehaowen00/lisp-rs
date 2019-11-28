@@ -18,17 +18,21 @@ fn parse_rd(expr: &Vec<char>, idx: &mut usize) -> Result<LispToken, LispError> {
             expr[*idx + 1]
         };
 
-        if ch.is_alphabetic() || ch == '\'' || ch == '#' {
+        if ch.is_alphabetic() || ch == '#' {
             return symbol(&expr, idx);
         } else if ch.is_numeric() || (ch == '-' && ahead.is_numeric()) {
             return number(&expr, idx);
         } else if ch == '"' {
             return string(&expr, idx);
+        } else if ch == '\'' {
+            return quote(&expr, idx);
         } else if is_special(ch) {
             return special(&expr, idx);
         } else if ch == '(' {
             return list(&expr, idx);
-        } else if !is_bracket(ch) {
+        } else if !is_delimiter(ch) && !is_special(ch) {
+            return Err(LispError::UnexpectedChar(ch, *idx));
+        } else {
             *idx = *idx + 1;
         }
     }
@@ -61,6 +65,13 @@ fn number(expr: &Vec<char>, idx: &mut usize) ->  Result<LispToken, LispError> {
     }
 
     Ok(LispToken::Num(s))
+}
+
+fn quote(expr: &Vec<char>, idx: &mut usize) ->  Result<LispToken, LispError> {
+    *idx = *idx + 1;
+
+    let value = parse_rd(expr, idx)?;
+    Ok(LispToken::Quote(format!("{} ", value)))
 }
 
 fn symbol(expr: &Vec<char>, idx: &mut usize) ->  Result<LispToken, LispError> {

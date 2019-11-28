@@ -45,6 +45,7 @@ pub enum LispToken {
     Func(fn(&mut LispContext, &Vec<Self>) -> Result<Self, LispError>),
     List(Vec<Self>),
     Num(String),
+    Quote(String),
     Str(String),
     Sym(String)
 }
@@ -118,14 +119,17 @@ impl fmt::Debug for LispToken {
                 if xs.is_empty() {
                     write!(f, "List([])")
                 } else {
-                    write!(f, "List([ {} ])", xs)
+                    write!(f, "List([ {:?} ])", xs.trim_end())
                 }
             },
             LispToken::Num(n) => {
-                write!(f, "Num({})", n)
+                write!(f, "Num({:?})", n)
             },
+            LispToken::Quote(token) => {
+                write!(f, "Quote({:?})", token.trim_end())
+            }
             LispToken::Str(string) => {
-                write!(f, "Str({})", string)
+                write!(f, "Str({:?})", string)
             },
             LispToken::Sym(string) => {
                 write!(f, "Sym(\"{}\")", string)
@@ -145,11 +149,14 @@ impl fmt::Display for LispToken {
                 if xs.is_empty() {
                     write!(f, "()")
                 } else {
-                    write!(f, "({})", xs)
+                    write!(f, "({})", xs.trim_end())
                 }
             },
             LispToken::Num(n) => {
                 write!(f, "{}", n)
+            },
+            LispToken::Quote(token) => {
+                write!(f, "{}", token)
             },
             LispToken::Str(string) => {
                 write!(f, "{}", string)
@@ -165,6 +172,7 @@ impl PartialEq for LispToken {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (LispToken::Num(a), LispToken::Num(b)) => a == b,
+            (LispToken::Quote(a), LispToken::Quote(b)) => a == b,
             (LispToken::Str(a), LispToken::Str(b)) => a == b,
             (LispToken::Sym(a), LispToken::Sym(b)) => a == b,
             _ => false

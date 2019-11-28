@@ -27,6 +27,7 @@ quote
 let
 lambda
 apply
+eval
 quit
 ```
 

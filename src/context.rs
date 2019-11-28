@@ -1,6 +1,7 @@
 use crate::tokens::{LispToken};
 use std::collections::{HashMap};
 
+#[derive(Clone)]
 pub struct LispContext {
     globals: HashMap<String, LispToken>,
     locals: HashMap<String, LispToken>

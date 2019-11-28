@@ -12,6 +12,10 @@ pub struct LispEnv {
 impl LispEnv {
     pub fn repl(&mut self) {
         let mut editor = Editor::<()>::new();
+        
+        if let Err(_) = editor.load_history("./session.lisp") {
+            println!("error: unable to load previous history.");
+        }
 
         'repl: loop {  
             let read_result = editor.readline("* ");
@@ -23,37 +27,39 @@ impl LispEnv {
             line = line.trim_end().to_string();
             line.push(' ');
 
-            let result = parse(&line.chars().collect());
-
-            if let Err(err) = result {
-                println!("{}", err);
-                continue;
-            }
-
-            match &mut self.eval(&result.unwrap()) {
-                Ok(res) => {
-                    editor.add_history_entry(line.trim_end());
-                    println!("> {}\n", res);
-                },
-                Err(err) => {
-                    if let LispError::Quit = err {
-                        println!("");
+            match self.parse(&line) {
+                Ok(expr) => {
+                    if !self.eval(&expr) {
                         break 'repl;
                     }
-
-                    editor.add_history_entry(line.trim_end());
-                    println!("{}\n", err);
-                }
+                },
+                Err(err) => println!("{}", err)
             }
 
+            editor.add_history_entry(line.trim_end());
             self.ctx.clear_locals();
         }
 
         editor.save_history("./session.lisp").unwrap();
     }
+
+    fn parse(&self, line: &str) -> LispResult {
+        parse(&line.chars().collect())
+    }
     
-    fn eval(&mut self, expr: &LispToken) -> LispResult {
-        eval(&mut self.ctx, expr)
+    fn eval(&mut self, expr: &LispToken) -> bool {
+        match eval(&mut self.ctx, expr) {
+            Ok(res) => println!("> {}\n", res),
+            Err(err) => {
+                if let LispError::Quit = err {
+                    return false;
+                }
+
+                println!("{}\n", err);
+            }
+        }
+
+        true
     }
 }
 
@@ -91,6 +97,8 @@ impl Default for LispEnv {
         symbols.insert(String::from("let"), LispToken::Func(label));
         symbols.insert(String::from("lambda"), LispToken::Func(lambda));
         symbols.insert(String::from("apply"), LispToken::Func(apply));
+        symbols.insert(String::from("eval"), LispToken::Func(
+            |ctx: &mut LispContext, args: &Vec<LispToken>| -> LispResult { eval(ctx, &args[0])}));
         symbols.insert(String::from("quit"), LispToken::Func(quit));
         
         LispEnv {
@@ -100,13 +108,16 @@ impl Default for LispEnv {
 }
 
 fn eval(ctx: &mut LispContext, expr: &LispToken) -> LispResult {
-    match expr {
+    let result = match expr {
         LispToken::List(_) => {
             eval_list(ctx, expr)
         },
         LispToken::Sym(s) => {
-            if let Some(sym) = ctx.get(s.to_string()) {
-                return Ok((*sym).clone());
+            if let Some(sym) = ctx.clone().get(s.to_string()) {
+                if let LispToken::List(_) = &sym {
+                    return eval(ctx, sym);
+                }
+                return Ok(sym.clone());
             }
 
             Err(LispError::EvalError(format!("undefined symbol `{:?}`", expr.clone())))
@@ -114,13 +125,20 @@ fn eval(ctx: &mut LispContext, expr: &LispToken) -> LispResult {
         LispToken::Num(_) => {
             Ok(expr.clone())
         },
+        LispToken::Quote(token) => {
+            let tokens = &parse(&token.chars().collect())?;
+            eval(ctx, tokens)
+        },
         LispToken::Str(_) => {
             Ok(expr.clone())
         },
         _ => {
-            Err(LispError::EvalError("unexpected expression.".to_string()))
+            Err(LispError::EvalError(format!("unexpected expression [{}]", expr)))
         }
-    }
+    }?;
+
+    ctx.insert_local(format!("{}", expr), result.clone());
+    Ok(result)
 }
 
 fn eval_list(ctx: &mut LispContext, expr: &LispToken) -> LispResult {
@@ -167,15 +185,22 @@ fn eval_list(ctx: &mut LispContext, expr: &LispToken) -> LispResult {
         return Ok(token_xs);
     }
 
-    Ok(LispToken::List(lst.iter().map(|tok| eval(ctx, tok).unwrap()).collect()))
+    let result = eval_vec(ctx, &lst)?;
+    let result2 = eval_vec(ctx, &lst)?;
+    Ok(LispToken::List(result2))
 }
 
 fn eval_vec(ctx: &mut LispContext, args: &Vec<LispToken>) -> Result<Vec<LispToken>, LispError> {
-    let mut xs = Vec::new();
+    let mut xs : Vec<LispToken> = Vec::new();
 
     for arg in args {
-        let value = eval(ctx, arg)?;
-        xs.push(value);
+        match arg {
+            LispToken::Quote(_) => xs.push(arg.clone()),
+            x => {
+                let value = eval(ctx, x)?;
+                xs.push(value.clone());
+            }
+        }
     }
 
     Ok(xs)
@@ -358,6 +383,7 @@ fn car(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
     }
 
     if let Ok(LispToken::List(lst)) = eval(ctx, &args[0]) {
+
         if lst.is_empty() {
             return Ok(LispToken::Sym("#nil".to_string()));
         }
@@ -443,7 +469,7 @@ fn quote(_ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
         return Err(LispError::InvalidNoArguments);
     }
 
-    Ok(LispToken::Sym(format!("'{}", args[0])))
+    Ok(LispToken::Quote(format!("'{}", args[0])))
 }
 
 fn label(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
@@ -452,9 +478,15 @@ fn label(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
     } 
 
     if let LispToken::Sym(s) = &args[0] {
+        if format!("{:?}", &args[1]).contains("Quote") {
+            let value = parse(&format!("{}", &args[1]).chars().collect())?;
+            ctx.insert(s.to_string(), value.clone());
+            return Ok(value);
+        }
+        
         let value = eval(ctx, &args[1])?;
         let result = eval(ctx, &value)?;
-
+        
         ctx.insert(s.to_string(), result);
         return Ok(value);
     }
