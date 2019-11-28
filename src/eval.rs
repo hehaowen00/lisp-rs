@@ -182,8 +182,7 @@ fn eval_list(ctx: &mut LispContext, expr: &LispToken) -> LispResult {
     }
 
     let result = eval_vec(ctx, &lst)?;
-    let result2 = eval_vec(ctx, &lst)?;
-    Ok(LispToken::List(result2))
+    Ok(LispToken::List(result))
 }
 
 fn eval_vec(ctx: &mut LispContext, args: &Vec<LispToken>) -> Result<Vec<LispToken>, LispError> {
