@@ -559,21 +559,15 @@ fn apply(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
             s = s.replace(&format!("{}", arg), &format!("{}", arguments[idx]));
         }
 
-        return match parse(&s.chars().collect()) {
-            Ok(xs) => {
-                match ctx.get_local(format!("{}", &xs)) {
-                    Some(result) => Ok(result.clone()),
-                    None => {
-                        let res = eval(ctx, &xs);
-                        if let Ok(value) = &res {
-                            ctx.insert_local(format!("{}", &xs), value.clone());
-                        }
+        let expr = parse(&s.chars().collect())?;
 
-                        res
-                    }
-                }
-            },
-            Err(err) => Err(err)
+        return match ctx.get_local(format!("{}", &expr)) {
+            Some(result) => Ok(result.clone()),
+            None => {
+                let result = eval(ctx, &expr)?;
+                ctx.insert_local(format!("{}", &expr), result.clone());
+                Ok(result)
+            }
         };
     }
 
