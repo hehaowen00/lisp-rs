@@ -174,12 +174,8 @@ fn eval_vec(ctx: &mut LispContext, args: &Vec<LispToken>) -> Result<Vec<LispToke
     let mut xs = Vec::new();
 
     for arg in args {
-        match eval(ctx, arg) {
-            Ok(x) => xs.push(x),
-            Err(err) => {
-                return Err(err);
-            }
-        }
+        let value = eval(ctx, arg)?;
+        xs.push(value);
     }
 
     Ok(xs)
@@ -347,12 +343,13 @@ fn not(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
     Ok(LispToken::from(!value))
 }
 
-fn cons(_ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
+fn cons(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
     if args.len() < 1 {
         return Err(LispError::InvalidNoArguments);
     }
 
-    Ok(LispToken::List(args.clone()))
+    let xs = eval_vec(ctx, args)?;
+    Ok(LispToken::List(xs))
 }
 
 fn car(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
@@ -365,6 +362,7 @@ fn car(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
             return Ok(LispToken::Sym("#nil".to_string()));
         }
 
+        let lst = eval_vec(ctx, &lst)?;
         return Ok(lst[0].clone());
     }
 
@@ -377,6 +375,7 @@ fn cdr(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
     }
 
     if let Ok(LispToken::List(lst)) = eval(ctx, &args[0]) {
+        let lst = eval_vec(ctx, &lst)?;
         return Ok(LispToken::List(lst.iter().cloned().skip(1).collect()));
     }
 
@@ -444,7 +443,7 @@ fn quote(_ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
         return Err(LispError::InvalidNoArguments);
     }
 
-    Ok(args[0].clone())
+    Ok(LispToken::Sym(format!("'{}", args[0])))
 }
 
 fn label(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
@@ -495,7 +494,7 @@ fn apply(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
         }
     };
 
-    let arguments = match &args[1] {
+    let arguments = match &eval(ctx, &args[1])? {
         LispToken::List(xs) => xs.to_vec(),
         x => vec![x.clone()]
     };
