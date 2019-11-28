@@ -12,10 +12,8 @@ pub struct LispEnv {
 impl LispEnv {
     pub fn repl(&mut self) {
         let mut editor = Editor::<()>::new();
-        
-        if let Err(_) = editor.load_history("./session.lisp") {
-            println!("error: unable to load previous history.");
-        }
+
+        let _ = editor.load_history("./session.lisp");
 
         'repl: loop {  
             let read_result = editor.readline("* ");
@@ -45,7 +43,7 @@ impl LispEnv {
     
     fn eval(&mut self, expr: &LispToken) -> bool {
         match eval(&mut self.ctx, expr) {
-            Ok(res) => println!("> {}\n", res),
+            Ok(res) => println!(" > {}\n", res),
             Err(err) => {
                 if let LispError::Quit = err {
                     return false;
