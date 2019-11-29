@@ -21,9 +21,11 @@ impl LispEnv {
                 break 'repl;
             }
 
-            let mut line = read_result.unwrap();
-            line = line.trim_end().to_string();
-            line.push(' ');
+            let line = {
+                let mut line = read_result.unwrap();
+                line.push(' ');
+                line.trim_end().to_string()
+            };
 
             match parse(&line.chars().collect()) {
                 Ok(expr) => {
@@ -61,40 +63,40 @@ impl Default for LispEnv {
     fn default() -> Self {
         let mut symbols = LispContext::new();
         
-        symbols.insert(String::from("#t"), LispToken::from(true));
-        symbols.insert(String::from("#f"), LispToken::from(false));
-        symbols.insert(String::from("#nil"), LispToken::from(false));
+        symbols.insert("#t", LispToken::from(true));
+        symbols.insert("#f", LispToken::from(false));
+        symbols.insert("#nil", LispToken::from(false));
 
-        symbols.insert(String::from("+"), LispToken::Func(add));
-        symbols.insert(String::from("-"), LispToken::Func(sub));
-        symbols.insert(String::from("*"), LispToken::Func(mul));
-        symbols.insert(String::from("/"), LispToken::Func(div));
-        symbols.insert(String::from("mod"), LispToken::Func(modulo));
+        symbols.insert("+", LispToken::Func(add));
+        symbols.insert("-", LispToken::Func(sub));
+        symbols.insert("*", LispToken::Func(mul));
+        symbols.insert("/", LispToken::Func(div));
+        symbols.insert("mod", LispToken::Func(modulo));
 
-        symbols.insert(String::from(">"), LispToken::Func(gt));
-        symbols.insert(String::from("<"), LispToken::Func(lt));
+        symbols.insert(">", LispToken::Func(gt));
+        symbols.insert("<", LispToken::Func(lt));
 
-        symbols.insert(String::from("and"), LispToken::Func(and));
-        symbols.insert(String::from("or"), LispToken::Func(or));
-        symbols.insert(String::from("not"), LispToken::Func(not));
+        symbols.insert("and", LispToken::Func(and));
+        symbols.insert("or", LispToken::Func(or));
+        symbols.insert("not", LispToken::Func(not));
 
-        symbols.insert(String::from("cons"), LispToken::Func(cons));
-        symbols.insert(String::from("car"), LispToken::Func(car));
-        symbols.insert(String::from("cdr"), LispToken::Func(cdr));
+        symbols.insert("cons", LispToken::Func(cons));
+        symbols.insert("car", LispToken::Func(car));
+        symbols.insert("cdr", LispToken::Func(cdr));
 
-        symbols.insert(String::from("eq"), LispToken::Func(eq));
-        symbols.insert(String::from("neq"), LispToken::Func(neq));
+        symbols.insert("eq", LispToken::Func(eq));
+        symbols.insert("neq", LispToken::Func(neq));
 
-        symbols.insert(String::from("atom"), LispToken::Func(atom));
-        symbols.insert(String::from("cond"), LispToken::Func(cond));
-        symbols.insert(String::from("quote"), LispToken::Func(quote));
+        symbols.insert("atom", LispToken::Func(atom));
+        symbols.insert("cond", LispToken::Func(cond));
+        symbols.insert("quote", LispToken::Func(quote));
 
-        symbols.insert(String::from("let"), LispToken::Func(label));
-        symbols.insert(String::from("lambda"), LispToken::Func(lambda));
-        symbols.insert(String::from("apply"), LispToken::Func(apply));
-        symbols.insert(String::from("eval"), LispToken::Func(
+        symbols.insert("let", LispToken::Func(label));
+        symbols.insert("lambda", LispToken::Func(lambda));
+        symbols.insert("apply", LispToken::Func(apply));
+        symbols.insert("eval", LispToken::Func(
             |ctx: &mut LispContext, args: &Vec<LispToken>| -> LispResult { eval(ctx, &args[0])}));
-        symbols.insert(String::from("quit"), LispToken::Func(quit));
+        symbols.insert("quit", LispToken::Func(quit));
         
         LispEnv {
             ctx: symbols
