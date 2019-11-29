@@ -1,7 +1,9 @@
 use crate::context::{LispContext};
 use crate::tokens::{LispError, LispToken};
 use crate::parser::{parse};
+
 use rustyline::{Editor};
+use rustyline::error::ReadlineError;
 
 type LispResult = Result<LispToken, LispError>;
 
@@ -17,22 +19,20 @@ impl LispEnv {
         let _ = editor.load_history("./session.lisp");
 
         'repl: loop {  
-            let read_result = editor.readline("* ");
-            if let Err(_) = read_result {
-                break 'repl;
-            }
-
-            let line = {
-                let mut line = read_result.unwrap();
-                line.push(' ');
-                line.trim_end().to_string()
+            let line = match editor.readline("* ") {
+                Ok(s) => s.trim_end().to_string(),
+                Err(ReadlineError::Interrupted) | Err(ReadlineError::Eof) => break,
+                Err(_) => {
+                    println!(" > error: unable to read line.\n");
+                    continue;
+                }
             };
 
             if line.is_empty() {
                 println!("");
                 continue;
             }
-
+            
             match parse(&line.chars().collect()) {
                 Ok(expr) => self.eval(&expr),
                 Err(err) => self.result = format!("{}", err)
