@@ -20,7 +20,7 @@ impl LispEnv {
 
         'repl: loop {  
             let line = match editor.readline("* ") {
-                Ok(s) => s.trim_end().to_string(),
+                Ok(s) => format!("{} ", s),
                 Err(ReadlineError::Interrupted) | Err(ReadlineError::Eof) => break,
                 Err(_) => {
                     println!(" > error: unable to read line.\n");
