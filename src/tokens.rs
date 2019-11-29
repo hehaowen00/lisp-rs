@@ -7,7 +7,7 @@ use std::{fmt};
 pub enum LispError {
     EndOfSequence,
     EvalError(String),
-    InvalidArgument,
+    InvalidArguments,
     InvalidNoArguments,
     Quit,
     Other(String),
@@ -23,14 +23,14 @@ impl fmt::Display for LispError {
             LispError::EvalError(msg) => {
                 write!(f, "error: {}", msg)
             },
-            LispError::InvalidArgument => {
+            LispError::InvalidArguments => {
                 write!(f, "error: invalid argument(s) given.")
             },
             LispError::InvalidNoArguments => {
                 write!(f, "error: invalid number of arguments given.")
             }
             LispError::UnexpectedChar(ch, idx) => {
-                write!(f, "error: unexpected character '{}' at col {}.", ch, idx)
+                write!(f, "error: unexpected character `{}` at col {}.", ch, idx)
             },
             LispError::Other(msg) => {
                 write!(f, "error: {}.", msg)
