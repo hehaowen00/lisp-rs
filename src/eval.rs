@@ -6,13 +6,14 @@ use rustyline::{Editor};
 type LispResult = Result<LispToken, LispError>;
 
 pub struct LispEnv {
-    ctx: LispContext
+    ctx: LispContext,
+    result: String,
+    status: bool
 }
 
 impl LispEnv {
     pub fn repl(&mut self) {
         let mut editor = Editor::<()>::new();
-
         let _ = editor.load_history("./session.lisp");
 
         'repl: loop {  
@@ -27,14 +28,21 @@ impl LispEnv {
                 line.trim_end().to_string()
             };
 
-            match parse(&line.chars().collect()) {
-                Ok(expr) => {
-                    if !self.eval(&expr) {
-                        break 'repl;
-                    }
-                },
-                Err(err) => println!(" > {}\n", err)
+            if line.is_empty() {
+                println!("");
+                continue;
             }
+
+            match parse(&line.chars().collect()) {
+                Ok(expr) => self.eval(&expr),
+                Err(err) => self.result = format!("{}", err)
+            }
+            
+            if !self.status {
+                break 'repl;
+            }
+
+            println!(" > {}\n", self.result);
 
             editor.add_history_entry(line.trim_end());
             self.ctx.clear_locals();
@@ -43,19 +51,14 @@ impl LispEnv {
         editor.save_history("./session.lisp").unwrap();
     }
     
-    fn eval(&mut self, expr: &LispToken) -> bool {
+    fn eval(&mut self, expr: &LispToken) {
         match eval(&mut self.ctx, expr) {
-            Ok(res) => println!(" > {}\n", res),
+            Ok(res) => self.result = format!("{}", res),
             Err(err) => {
-                if let LispError::Quit = err {
-                    return false;
-                }
-
-                println!(" > {}\n", err);
+                self.status = !(err == LispError::Quit);
+                self.result = format!("{}", err)
             }
         }
-
-        true
     }
 }
 
@@ -99,7 +102,9 @@ impl Default for LispEnv {
         symbols.insert("quit", LispToken::Func(quit));
         
         LispEnv {
-            ctx: symbols
+            ctx: symbols,
+            result: String::new(),
+            status: true
         }
     }
 }
@@ -347,33 +352,32 @@ fn cons(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
 }
 
 fn car(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
-    if let Ok(LispToken::List(lst)) = eval(ctx, &args[0]) {
-
-        if lst.is_empty() {
-            return Ok(LispToken::Sym("#nil".to_string()));
-        }
-
-        let lst = eval_vec(ctx, &lst)?;
-        return Ok(lst[0].clone());
+    match eval(ctx, &args[0])? {
+        LispToken::List(lst) => {
+            if lst.is_empty() {
+                return Ok(LispToken::Sym("#nil".to_string()));
+            }
+    
+            let lst = eval_vec(ctx, &lst)?;
+            Ok(lst[0].clone())
+        },
+        _ => Ok(LispToken::Sym("#nil".to_string()))
     }
-
-    Ok(LispToken::Sym("#nil".to_string()))
 }
 
 fn cdr(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
-    if let Ok(LispToken::List(lst)) = eval(ctx, &args[0]) {
-        let lst = eval_vec(ctx, &lst)?;
-
-        if lst.len() < 1 {
-            return Err(LispError::InvalidNoArguments);
-        }
-
-        return Ok(LispToken::List(lst.iter().cloned().skip(1).collect()));
+    match eval(ctx, &args[0])? {
+        LispToken::List(lst) => {
+            if lst.len() < 1 {
+                return Ok(LispToken::Sym("#nil".to_string()));
+            }
+    
+            let lst = eval_vec(ctx, &lst)?;
+            Ok(LispToken::List(lst.iter().cloned().skip(1).collect()))
+        },
+        _ => Ok(LispToken::Sym("#nil".to_string()))
     }
-
-    Ok(LispToken::Sym("#nil".to_string()))
 }
-
 
 fn atom(_ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
     if args.len() != 1 {

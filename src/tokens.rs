@@ -3,7 +3,7 @@ use itertools::{Itertools};
 use std::convert::{From};
 use std::{fmt};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum LispError {
     EndOfSequence,
     EvalError(String),
