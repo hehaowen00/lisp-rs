@@ -1,6 +1,10 @@
 use crate::tokens::{LispToken};
 use std::collections::{HashMap};
 
+
+// Struct to represent the environment of the Lisp Interpreter
+// globals: A hashmap to store globally store defined symbols
+// locals: A hashmap to store results of previous computation
 #[derive(Clone)]
 pub struct LispContext {
     globals: HashMap<String, LispToken>,

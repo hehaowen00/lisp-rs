@@ -5,8 +5,13 @@ use crate::parser::{parse};
 use rustyline::{Editor};
 use rustyline::error::ReadlineError;
 
+// type alias: for repeated return types for lisp primitives.
 type LispResult = Result<LispToken, LispError>;
 
+// struct: Stores the environment of which user entered lisp code executes.
+// ctx: LispContext for storing globally defined symbols and tail call optimisation.
+// result: stores the last result computed for display.
+// status: determines when to quit the REPL.
 pub struct LispEnv {
     ctx: LispContext,
     result: String,
@@ -14,11 +19,13 @@ pub struct LispEnv {
 }
 
 impl LispEnv {
+
+    // function: starts the read-eval-print loop
     pub fn repl(&mut self) {
         let mut editor = Editor::<()>::new();
         let _ = editor.load_history("./session.lisp");
 
-        'repl: loop {  
+        'repl: loop {
             let line = match editor.readline("* ") {
                 Ok(s) => format!("{} ", s),
                 Err(ReadlineError::Interrupted) | Err(ReadlineError::Eof) => break,
@@ -32,12 +39,12 @@ impl LispEnv {
                 println!("");
                 continue;
             }
-            
+
             match parse(&line.chars().collect()) {
                 Ok(expr) => self.eval(&expr),
                 Err(err) => self.result = format!("{}", err)
             }
-            
+
             if !self.status {
                 break 'repl;
             }
@@ -50,7 +57,8 @@ impl LispEnv {
 
         editor.save_history("./session.lisp").unwrap();
     }
-    
+
+    // function: evaluates user lisp expression and stores the result in self
     fn eval(&mut self, expr: &LispToken) {
         match eval(&mut self.ctx, expr) {
             Ok(res) => self.result = format!("{}", res),
@@ -65,7 +73,7 @@ impl LispEnv {
 impl Default for LispEnv {
     fn default() -> Self {
         let mut symbols = LispContext::new();
-        
+
         symbols.insert("#t", LispToken::from(true));
         symbols.insert("#f", LispToken::from(false));
         symbols.insert("#nil", LispToken::from(false));
@@ -100,7 +108,7 @@ impl Default for LispEnv {
         symbols.insert("eval", LispToken::Func(
             |ctx: &mut LispContext, args: &Vec<LispToken>| -> LispResult { eval(ctx, &args[0])}));
         symbols.insert("quit", LispToken::Func(quit));
-        
+
         LispEnv {
             ctx: symbols,
             result: String::new(),
@@ -159,7 +167,7 @@ fn eval_list(ctx: &mut LispContext, expr: &LispToken) -> LispResult {
     if lst.is_empty() {
         return Ok(expr.clone());
     }
-    
+
     if let LispToken::List(test) = lst[0].clone() {
         if test[0] == LispToken::Sym("lambda".to_string()) {
             return lambda(ctx, &lst);
@@ -175,7 +183,7 @@ fn eval_list(ctx: &mut LispContext, expr: &LispToken) -> LispResult {
         }
 
         // For all other tokens that aren't Func
-        
+
         let mut xs = Vec::new();
 
         for item in lst.iter() {
@@ -248,7 +256,7 @@ fn mul(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
     for value in xs.iter().skip(1) {
         result = result * value;
     }
-    
+
     Ok(LispToken::from(result))
 }
 
@@ -264,7 +272,7 @@ fn div(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
     for value in xs.iter().skip(1) {
         result = result / value;
     }
-    
+
     Ok(LispToken::from(result))
 }
 
@@ -282,7 +290,7 @@ fn modulo(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
         Some(value) => result = result % value,
         _ => return Err(LispError::InvalidNoArguments)
     }
-    
+
     Ok(LispToken::from(result))
 }
 
@@ -341,7 +349,7 @@ fn not(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
     Ok(LispToken::from(!xs[0]))
 }
 
-fn cons(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {    
+fn cons(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
     let xs = eval_vec(ctx, args)?;
 
     if xs.len() < 1 {
@@ -357,7 +365,7 @@ fn car(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
             if lst.is_empty() {
                 return Ok(LispToken::Sym("#nil".to_string()));
             }
-    
+
             let lst = eval_vec(ctx, &lst)?;
             Ok(lst[0].clone())
         },
@@ -371,7 +379,7 @@ fn cdr(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
             if lst.len() < 1 {
                 return Ok(LispToken::Sym("#nil".to_string()));
             }
-    
+
             let lst = eval_vec(ctx, &lst)?;
             Ok(LispToken::List(lst.iter().cloned().skip(1).collect()))
         },
@@ -401,8 +409,8 @@ fn cond(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
                 return Err(LispError::EvalError("malformed expression.".to_string()));
             }
 
-            let temp1 = eval(ctx, &lst[0])?;
-            if temp1.to_bool()? {
+            let temp = eval(ctx, &lst[0])?;
+            if temp.to_bool()? {
                 return eval(ctx, &lst[1]);
             }
         }
@@ -437,7 +445,7 @@ fn quote(_ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
 fn label(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
     if args.len() != 2 {
         return Err(LispError::InvalidNoArguments);
-    } 
+    }
 
     if let LispToken::Sym(s) = &args[0] {
         if format!("{:?}", &args[1]).contains("Quote") {
@@ -445,14 +453,14 @@ fn label(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
             ctx.insert(s.to_string(), value.clone());
             return Ok(value);
         }
-        
+
         let value = eval(ctx, &args[1])?;
         let result = eval(ctx, &value)?;
-        
+
         ctx.insert(s.to_string(), result);
         return Ok(value);
     }
-    
+
     Err(LispError::InvalidArguments)
 }
 
@@ -471,15 +479,17 @@ fn lambda(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
     for token in args {
         lst.push(token.clone());
     }
-    
+
     Ok(LispToken::List(lst))
 }
 
+// function: applies arguments to functions:
 fn apply(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
     if args.len() != 2 {
         return Err(LispError::InvalidNoArguments);
     }
 
+    // check if first element is a symbol
     let symbol = match args[0] {
         LispToken::List(_) => Some(args[0].clone()),
         _ => match ctx.get(format!("{}", args[0])) {
@@ -488,53 +498,64 @@ fn apply(ctx: &mut LispContext, args: &Vec<LispToken>) -> LispResult {
         }
     };
 
+    // check if second element is a list.
     let arguments = match &eval(ctx, &args[1])? {
         LispToken::List(xs) => xs.to_vec(),
         x => vec![x.clone()]
     };
 
+    // check if first element evaluates to a list.
     if let Some(LispToken::List(f)) = symbol {
         if f.len() != 3 {
             return Err(LispError::InvalidNoArguments);
         }
 
+        // checks if list is a lambda function.
         if LispToken::Sym("lambda".to_string()) != f[0] {
             return Err(LispError::InvalidArguments)
         }
 
+        // check parameters to lambda function.
         let params : Vec<LispToken> = match &f[1] {
             LispToken::List(xs) => xs.to_vec(),
             _ => vec![]
         };
-        
+
+        // get the expression to be computed.
         let expr = match &f[2] {
             LispToken::List(xs) => xs.to_vec(),
             _ => vec![]
         };
 
+        // checks the length of the expression to be evaluated.
         if expr.len() == 0 {
             return Ok(LispToken::Sym("#nil".to_string()));
         }
 
+        // checks if the number of input values matches the number of parameters
         if arguments.len() != params.len() {
             return Err(LispError::InvalidNoArguments);
         }
 
+        // convert expression to string using display trait.
         let mut s = format!("{}", f[2]);
 
+        // replace expression parameters with input values.
         for (idx, arg) in params.iter().enumerate() {
             s = s.replace(&format!("{}", arg), &format!("{}", arguments[idx]));
         }
 
+        // turn the string back into a lisp AST.
         let expr = parse(&s.chars().collect())?;
 
+        // evaluate and return the result of the computed lambda.
         return eval(ctx, &expr);
     }
 
     if let Some(LispToken::Func(func)) = symbol {
         return func(ctx, &arguments);
     }
-    
+
     return Err(LispError::InvalidArguments);
 }
 

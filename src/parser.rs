@@ -1,10 +1,12 @@
 use crate::tokens::{LispError, LispToken};
 
+// function: serves to call the actual parsing function.
 pub fn parse(expr: &Vec<char>) -> Result<LispToken, LispError> {
     let mut idx = 0;
     parse_rd(&expr, &mut idx)
 }
 
+// function: converts a vector of chars to a s-expression. returns LispToken on success or LispError on error.
 fn parse_rd(expr: &Vec<char>, idx: &mut usize) -> Result<LispToken, LispError> {
     loop {
         if *idx >= expr.len() {
@@ -38,6 +40,7 @@ fn parse_rd(expr: &Vec<char>, idx: &mut usize) -> Result<LispToken, LispError> {
     }
 }
 
+// function: reads in a sequence of numeric characters or symbols into a buffer and stores it in a Num variant
 fn number(expr: &Vec<char>, idx: &mut usize) ->  Result<LispToken, LispError> {
     let mut s = expr[*idx].to_string();
     let mut decimal_set = false;
@@ -48,7 +51,7 @@ fn number(expr: &Vec<char>, idx: &mut usize) ->  Result<LispToken, LispError> {
         if *idx >= expr.len() {
             return Err(LispError::EndOfSequence);
         }
-    
+
         let ch = expr[*idx];
 
         if ch.is_numeric() {
@@ -67,6 +70,7 @@ fn number(expr: &Vec<char>, idx: &mut usize) ->  Result<LispToken, LispError> {
     Ok(LispToken::Num(s))
 }
 
+// function: reads in the next LispToken stores them in a Quote variant using the format! macro.
 fn quote(expr: &Vec<char>, idx: &mut usize) ->  Result<LispToken, LispError> {
     *idx = *idx + 1;
 
@@ -74,6 +78,7 @@ fn quote(expr: &Vec<char>, idx: &mut usize) ->  Result<LispToken, LispError> {
     Ok(LispToken::Quote(format!("{} ", value)))
 }
 
+// function: reads in alphanumeric characters and stores them in a Sym variant.
 fn symbol(expr: &Vec<char>, idx: &mut usize) ->  Result<LispToken, LispError> {
     let mut s = expr[*idx].to_string();
 
@@ -83,9 +88,9 @@ fn symbol(expr: &Vec<char>, idx: &mut usize) ->  Result<LispToken, LispError> {
         if *idx >= expr.len() {
             return Err(LispError::EndOfSequence);
         }
-        
+
         let ch = expr[*idx];
-        
+
         if ch.is_alphanumeric() || ch == '-' || ch == '#' {
             s.push(ch);
         } else if is_delimiter(ch) {
@@ -99,6 +104,7 @@ fn symbol(expr: &Vec<char>, idx: &mut usize) ->  Result<LispToken, LispError> {
     Ok(LispToken::Sym(s))
 }
 
+// function: reads in special characters or symbols and stores them in a Sym variant.
 fn special(expr: &Vec<char>, idx: &mut usize) -> Result<LispToken, LispError> {
     let mut s = expr[*idx].to_string();
     let mut not_set = true;
@@ -124,16 +130,17 @@ fn special(expr: &Vec<char>, idx: &mut usize) -> Result<LispToken, LispError> {
     }
 }
 
+// function: reads in a sequence of characters, starting and ending with " and stores them in a Str variant.
 fn string(expr: &Vec<char>, idx: &mut usize) -> Result<LispToken, LispError> {
     let mut s = expr[*idx].to_string();
-    
+
     loop {
         *idx = *idx + 1;
 
         if *idx >= expr.len() {
             return Err(LispError::EndOfSequence);
         }
-        
+
         let ch = expr[*idx];
         s.push(ch);
 
@@ -143,6 +150,7 @@ fn string(expr: &Vec<char>, idx: &mut usize) -> Result<LispToken, LispError> {
     }
 }
 
+// function: stores LispTokens from parse_rd in a vector and stores them in a List variant.
 fn list(expr: &Vec<char>, idx: &mut usize) ->  Result<LispToken, LispError> {
     let mut lst = Vec::new();
 
@@ -163,6 +171,8 @@ fn list(expr: &Vec<char>, idx: &mut usize) ->  Result<LispToken, LispError> {
 
     Ok(LispToken::List(lst))
 }
+
+// Helper Functions
 
 fn is_bracket(ch: char) -> bool {
     ch == '(' || ch == ')'

@@ -3,6 +3,7 @@ use itertools::{Itertools};
 use std::convert::{From};
 use std::{fmt};
 
+// enum: variant for storing possible errors that occur during parsing or eval processes.
 #[derive(Debug, PartialEq)]
 pub enum LispError {
     EndOfSequence,
@@ -40,6 +41,7 @@ impl fmt::Display for LispError {
     }
 }
 
+// enum: variant for storing the supported types in Lisp and serves as AST nodes.
 #[derive(Clone)]
 pub enum LispToken {
     Func(fn(&mut LispContext, &Vec<Self>) -> Result<Self, LispError>),
@@ -92,12 +94,14 @@ impl LispToken {
     }
 }
 
+// function: converts from rust f64 to lisp Num variant.
 impl From<f64> for LispToken {
     fn from(num: f64) -> Self {
         LispToken::Num(format!("{}", num))
     }
 }
 
+// function: converts rust boolean to lisp boolean symbol.
 impl From<bool> for LispToken {
     fn from(value: bool) -> Self {
         if value {
@@ -168,6 +172,7 @@ impl fmt::Display for LispToken {
     }
 }
 
+// function: implements equality comparison for lisp primitives.
 impl PartialEq for LispToken {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
